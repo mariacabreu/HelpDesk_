@@ -1,0 +1,118 @@
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Enum
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+from datetime import datetime
+import enum
+
+Base = declarative_base()
+
+class StatusChamado(enum.Enum):
+    ABERTO = "aberto"
+    EM_ATENDIMENTO = "em_atendimento"
+    AGUARDANDO_TERCEIRO = "aguardando_terceiro"
+    PENDENTE = "pendente"
+    RESOLVIDO = "resolvido"
+    FECHADO = "fechado"
+
+class Prioridade(enum.Enum):
+    BAIXA = "baixa"
+    MEDIA = "media"
+    ALTA = "alta"
+    CRITICA = "critica"
+
+class Empresa(Base):
+    __tablename__ = 'empresas'
+    
+    id = Column(Integer, primary_key=True)
+    razao_social = Column(String(255), nullable=False)
+    nome_fantasia = Column(String(255), nullable=False)
+    cnpj = Column(String(18), unique=True, nullable=False)
+    inscricao_estadual = Column(String(20))
+    segmento = Column(String(100))
+    
+    # Contato
+    nome_responsavel = Column(String(100))
+    cargo_responsavel = Column(String(100))
+    email = Column(String(100), unique=True)
+    telefone = Column(String(20))
+    
+    # Endereço
+    cep = Column(String(10))
+    endereco = Column(String(255))
+    cidade = Column(String(100))
+    estado = Column(String(2))
+    
+    # Relacionamentos
+    funcionarios = relationship("Funcionario", back_populates="empresa")
+    equipamentos = relationship("Equipamento", back_populates="empresa")
+    chamados = relationship("Chamado", back_populates="empresa")
+
+class Funcionario(Base):
+    __tablename__ = 'funcionarios'
+    
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey('empresas.id'))
+    nome = Column(String(100), nullable=False)
+    cpf = Column(String(14), unique=True)
+    email = Column(String(100), unique=True)
+    telefone = Column(String(20))
+    cargo = Column(String(100))
+    setor = Column(String(100))
+    
+    # Autenticação
+    login = Column(String(50), unique=True, nullable=False)
+    senha = Column(String(255), nullable=False) # Em produção usar hash
+    
+    # Relacionamentos
+    empresa = relationship("Empresa", back_populates="funcionarios")
+    chamados_solicitados = relationship("Chamado", back_populates="solicitante")
+
+class Equipamento(Base):
+    __tablename__ = 'equipamentos'
+    
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey('empresas.id'))
+    nome = Column(String(100), nullable=False)
+    patrimonio = Column(String(50), unique=True, nullable=False)
+    tipo = Column(String(50)) # ex: Notebook, Desktop, Impressora
+    marca = Column(String(50))
+    modelo = Column(String(100))
+    numero_serie = Column(String(100))
+    status = Column(String(20), default="ativo") # ativo, inativo, manutenção
+    
+    # Relacionamentos
+    empresa = relationship("Empresa", back_populates="equipamentos")
+    chamados = relationship("Chamado", back_populates="equipamento")
+
+class Chamado(Base):
+    __tablename__ = 'chamados'
+    
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey('empresas.id'))
+    solicitante_id = Column(Integer, ForeignKey('funcionarios.id'))
+    equipamento_id = Column(Integer, ForeignKey('equipamentos.id'), nullable=True)
+    
+    titulo = Column(String(200), nullable=False)
+    descricao = Column(Text, nullable=False)
+    tipo = Column(String(50)) # ex: Incidente, Solicitação, Dúvida
+    prioridade = Column(Enum(Prioridade), default=Prioridade.MEDIA)
+    status = Column(Enum(StatusChamado), default=StatusChamado.ABERTO)
+    
+    data_abertura = Column(DateTime, default=datetime.utcnow)
+    data_fechamento = Column(DateTime, nullable=True)
+    
+    # Relacionamentos
+    empresa = relationship("Empresa", back_populates="chamados")
+    solicitante = relationship("Funcionario", back_populates="chamados_solicitados")
+    equipamento = relationship("Equipamento", back_populates="chamados")
+
+# Configuração do Banco de Dados
+DATABASE_URL = "sqlite:///helpdesk.db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    print("Banco de dados inicializado com sucesso!")
+
+if __name__ == "__main__":
+    init_db()
