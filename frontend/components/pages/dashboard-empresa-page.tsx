@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
   ClipboardList,
   Clock,
@@ -66,10 +67,21 @@ const recentTickets = [
 ]
 
 export function DashboardEmpresaPage() {
+  const [userData, setUserData] = useState<any>(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      setUserData(JSON.parse(storedUser))
+    }
+  }, [])
+
+  const empresa = userData?.empresa
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Bem-vindo, Tech Solutions</h1>
+        <h1 className="text-2xl font-bold text-[#1a3a5c]">Bem-vindo, {empresa?.nome_fantasia || "Tech Solutions"}</h1>
         <p className="text-muted-foreground">Visão geral da sua infraestrutura de TI</p>
       </div>
 
@@ -127,11 +139,19 @@ export function DashboardEmpresaPage() {
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border">
                 <Building2 className="size-8 text-[#7ac142]" />
                 <div>
-                    <p className="font-bold text-[#1a3a5c]">Tech Solutions Ltda</p>
-                    <p className="text-xs text-muted-foreground">CNPJ: 12.345.678/0001-90</p>
+                    <p className="font-bold text-[#1a3a5c]">{empresa?.razao_social || "Tech Solutions Ltda"}</p>
+                    <p className="text-xs text-muted-foreground">CNPJ: {empresa?.cnpj || "12.345.678/0001-90"}</p>
                 </div>
             </div>
             <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Segmento</span>
+                    <span className="font-bold text-[#1a3a5c]">{empresa?.segmento || "N/A"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Cidade/UF</span>
+                    <span className="font-bold text-[#1a3a5c]">{empresa ? `${empresa.cidade}/${empresa.estado}` : "São Paulo/SP"}</span>
+                </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">SLA Médio de Atendimento</span>
                     <span className="font-bold text-[#1a3a5c]">4.2 horas</span>

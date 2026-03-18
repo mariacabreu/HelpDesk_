@@ -158,6 +158,8 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
           endereco: `${formData.rua}, ${formData.numero}${formData.complemento ? " - " + formData.complemento : ""}, ${formData.bairro}`,
           cidade: formData.cidade,
           estado: formData.estado,
+          login: formData.emailLogin,
+          senha: formData.senhaEmpresa,
         }),
       })
 

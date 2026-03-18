@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch"
 interface DashboardHeaderProps {
   userName?: string
   userEmail?: string
+  userCargo?: string
   notificationCount?: number
   userRole?: "suporte" | "empresa"
   onRoleChange?: (role: "suporte" | "empresa") => void
@@ -37,6 +38,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({
   userName = "João Silva",
   userEmail = "joao.silva@empresa.com",
+  userCargo = "Suporte N1",
   notificationCount = 3,
   userRole = "suporte",
   onRoleChange,
@@ -56,25 +58,6 @@ export function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4">
-          {/* Switch View (Debug/Demo purposes) */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <Button
-              variant={userRole === "suporte" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onRoleChange?.("suporte")}
-              className={userRole === "suporte" ? "bg-[#1a3a5c] text-white" : "text-[#1a3a5c]"}
-            >
-              Suporte
-            </Button>
-            <Button
-              variant={userRole === "empresa" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onRoleChange?.("empresa")}
-              className={userRole === "empresa" ? "bg-[#7ac142] text-white" : "text-[#1a3a5c]"}
-            >
-              Empresa
-            </Button>
-          </div>
           {/* Notificações */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -129,7 +112,7 @@ export function DashboardHeader({
                 </Avatar>
                 <div className="hidden lg:flex flex-col items-start">
                   <span className="text-sm font-medium text-[#1a3a5c]">{userName}</span>
-                  <span className="text-xs text-[#1a3a5c]/60">Suporte N1</span>
+                  <span className="text-xs text-[#1a3a5c]/60">{userCargo}</span>
                 </div>
               </Button>
             </DropdownMenuTrigger>
