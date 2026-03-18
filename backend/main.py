@@ -27,6 +27,48 @@ class LoginRequest(BaseModel):
     login: str
     password: str
 
+class EmpresaCreate(BaseModel):
+    razao_social: str
+    nome_fantasia: str
+    cnpj: str
+    inscricao_estadual: str | None = None
+    segmento: str | None = None
+    nome_responsavel: str | None = None
+    cargo_responsavel: str | None = None
+    email: str | None = None
+    telefone: str | None = None
+    cep: str | None = None
+    endereco: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+
+@app.post("/empresas")
+def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
+    # Verificar se o CNPJ já existe
+    existing_empresa = db.query(Empresa).filter(Empresa.cnpj == empresa.cnpj).first()
+    if existing_empresa:
+        raise HTTPException(status_code=400, detail="Empresa com este CNPJ já cadastrada")
+    
+    db_empresa = Empresa(
+        razao_social=empresa.razao_social,
+        nome_fantasia=empresa.nome_fantasia,
+        cnpj=empresa.cnpj,
+        inscricao_estadual=empresa.inscricao_estadual,
+        segmento=empresa.segmento,
+        nome_responsavel=empresa.nome_responsavel,
+        cargo_responsavel=empresa.cargo_responsavel,
+        email=empresa.email,
+        telefone=empresa.telefone,
+        cep=empresa.cep,
+        endereco=empresa.endereco,
+        cidade=empresa.cidade,
+        estado=empresa.estado
+    )
+    db.add(db_empresa)
+    db.commit()
+    db.refresh(db_empresa)
+    return db_empresa
+
 @app.post("/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     # Buscar o funcionário pelo login
