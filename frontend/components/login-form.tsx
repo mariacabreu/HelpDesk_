@@ -129,18 +129,10 @@ export function LoginForm({ onForgotPassword, onRegisterCompany, onRegisterEmplo
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 border-[#7ac142] text-[#7ac142] hover:bg-[#7ac142] hover:text-white"
+                className="w-full border-[#7ac142] text-[#7ac142] hover:bg-[#7ac142] hover:text-white"
                 onClick={onRegisterCompany}
               >
                 Cadastrar Empresa
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 border-[#3ba5d8] text-[#3ba5d8] hover:bg-[#3ba5d8] hover:text-white"
-                onClick={onRegisterEmployee}
-              >
-                Cadastrar Funcionário
               </Button>
             </div>
           </div>

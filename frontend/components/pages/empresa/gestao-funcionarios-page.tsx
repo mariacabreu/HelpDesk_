@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,65 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Plus, Eye, Pencil, XCircle, Search, Filter, UserPlus, Mail, Phone, Shield } from "lucide-react"
-
-const funcionariosMock = [
-  { 
-    id: "FUNC-001",
-    nome: "João Silva",
-    email: "joao@techsolutions.com",
-    telefone: "(11) 99999-0001",
-    cargo: "Analista de Sistemas",
-    departamento: "TI",
-    status: "ativo",
-    permissao: "admin",
-    dataCadastro: "2023-06-15"
-  },
-  { 
-    id: "FUNC-002",
-    nome: "Maria Santos",
-    email: "maria@techsolutions.com",
-    telefone: "(11) 99999-0002",
-    cargo: "Gerente Comercial",
-    departamento: "Comercial",
-    status: "ativo",
-    permissao: "usuario",
-    dataCadastro: "2023-07-20"
-  },
-  { 
-    id: "FUNC-003",
-    nome: "Pedro Oliveira",
-    email: "pedro@techsolutions.com",
-    telefone: "(11) 99999-0003",
-    cargo: "Desenvolvedor",
-    departamento: "TI",
-    status: "ativo",
-    permissao: "usuario",
-    dataCadastro: "2023-08-10"
-  },
-  { 
-    id: "FUNC-004",
-    nome: "Ana Costa",
-    email: "ana@techsolutions.com",
-    telefone: "(11) 99999-0004",
-    cargo: "Analista Financeiro",
-    departamento: "Financeiro",
-    status: "inativo",
-    permissao: "usuario",
-    dataCadastro: "2023-05-01"
-  },
-  { 
-    id: "FUNC-005",
-    nome: "Carlos Souza",
-    email: "carlos@techsolutions.com",
-    telefone: "(11) 99999-0005",
-    cargo: "Diretor",
-    departamento: "Diretoria",
-    status: "ativo",
-    permissao: "admin",
-    dataCadastro: "2023-01-10"
-  },
-]
+import { formatDateShort } from "@/lib/utils"
+import { Plus, Eye, Pencil, XCircle, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2 } from "lucide-react"
 
 const statusConfig = {
   ativo: { label: "Ativo", cor: "bg-green-100 text-green-800" },
@@ -81,16 +24,108 @@ const permissaoConfig = {
 }
 
 export function GestaoFuncionariosPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [funcionarios, setFuncionarios] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [busca, setBusca] = useState("")
   const [filtroDepartamento, setFiltroDepartamento] = useState("")
   const [filtroStatus, setFiltroStatus] = useState("")
-  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<typeof funcionariosMock[0] | null>(null)
+  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
 
-  const funcionariosFiltrados = funcionariosMock.filter(func => {
-    if (filtroDepartamento && func.departamento !== filtroDepartamento) return false
-    if (filtroStatus && func.status !== filtroStatus) return false
+  // Estados do formulário
+  const [novoFunc, setNovoFunc] = useState({
+    nome: "",
+    cpf: "",
+    email: "",
+    telefone: "",
+    cargo: "",
+    setor: "",
+    nivel: "n1",
+    permissao: "usuario",
+    senha: "",
+    confirmarSenha: ""
+  })
+
+  const fetchFuncionarios = async () => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      const empresaId = user.empresa?.id
+      if (empresaId) {
+        try {
+          const res = await fetch(`http://localhost:8000/funcionarios/empresa/${empresaId}`)
+          const data = await res.json()
+          setFuncionarios(data)
+        } catch (err) {
+          console.error("Erro ao buscar funcionários:", err)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    fetchFuncionarios()
+  }, [])
+
+  const handleCadastrar = async () => {
+    if (!novoFunc.nome || !novoFunc.email || !novoFunc.senha) {
+      alert("Por favor, preencha os campos obrigatórios (Nome, E-mail e Senha).")
+      return
+    }
+
+    if (novoFunc.senha !== novoFunc.confirmarSenha) {
+      alert("As senhas não coincidem.")
+      return
+    }
+
+    setSaving(true)
+    try {
+      const payload = {
+        empresa_id: userData.empresa.id,
+        nome: novoFunc.nome,
+        cpf: novoFunc.cpf,
+        email: novoFunc.email,
+        telefone: novoFunc.telefone,
+        cargo: novoFunc.cargo,
+        setor: novoFunc.setor,
+        login: novoFunc.email, // Usando e-mail como login por padrão
+        senha: novoFunc.senha
+      }
+
+      const response = await fetch("http://localhost:8000/funcionarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Erro ao cadastrar funcionário")
+      }
+
+      alert("Funcionário cadastrado com sucesso!")
+      setModalCadastro(false)
+      setNovoFunc({
+        nome: "", cpf: "", email: "", telefone: "", cargo: "", setor: "",
+        nivel: "n1", permissao: "usuario", senha: "", confirmarSenha: ""
+      })
+      fetchFuncionarios()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const funcionariosFiltrados = funcionarios.filter(func => {
+    if (filtroDepartamento && func.setor !== filtroDepartamento) return false
+    // if (filtroStatus && func.status !== filtroStatus) return false // Backend doesn't have status yet
     if (busca && !func.nome.toLowerCase().includes(busca.toLowerCase()) && 
         !func.email.toLowerCase().includes(busca.toLowerCase())) return false
     return true
@@ -122,7 +157,7 @@ export function GestaoFuncionariosPage() {
                 <UserPlus className="size-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{funcionariosMock.length}</p>
+                <p className="text-2xl font-bold text-[#1a3a5c]">{funcionarios.length}</p>
                 <p className="text-xs text-muted-foreground">Total de Funcionários</p>
               </div>
             </div>
@@ -136,7 +171,7 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {funcionariosMock.filter(f => f.status === "ativo").length}
+                  {funcionarios.filter(f => f.status === "ativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Ativos</p>
               </div>
@@ -151,7 +186,7 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {funcionariosMock.filter(f => f.permissao === "admin").length}
+                  {funcionarios.filter(f => f.permissao === "admin").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Administradores</p>
               </div>
@@ -166,7 +201,7 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {funcionariosMock.filter(f => f.status === "inativo").length}
+                  {funcionarios.filter(f => f.status === "inativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Inativos</p>
               </div>
@@ -257,56 +292,70 @@ export function GestaoFuncionariosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {funcionariosFiltrados.map((funcionario) => (
-                  <TableRow key={funcionario.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback className="bg-[#3ba5d8] text-white text-xs">
-                            {getInitials(funcionario.nome)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{funcionario.nome}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{funcionario.email}</TableCell>
-                    <TableCell>{funcionario.cargo}</TableCell>
-                    <TableCell>{funcionario.departamento}</TableCell>
-                    <TableCell>
-                      <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig].cor}>
-                        {permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusConfig[funcionario.status as keyof typeof statusConfig].cor}>
-                        {statusConfig[funcionario.status as keyof typeof statusConfig].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          title="Visualizar"
-                          onClick={() => {
-                            setFuncionarioSelecionado(funcionario)
-                            setModalDetalhes(true)
-                          }}
-                        >
-                          <Eye className="size-4 text-[#3ba5d8]" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Editar">
-                          <Pencil className="size-4 text-[#7ac142]" />
-                        </Button>
-                        {funcionario.status !== "inativo" && (
-                          <Button variant="ghost" size="icon" title="Inativar">
-                            <XCircle className="size-4 text-red-500" />
-                          </Button>
-                        )}
-                      </div>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Carregando funcionários...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : funcionariosFiltrados.length > 0 ? (
+                  funcionariosFiltrados.map((funcionario) => (
+                    <TableRow key={funcionario.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarFallback className="bg-[#3ba5d8] text-white text-xs">
+                              {getInitials(funcionario.nome)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">{funcionario.nome}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{funcionario.email}</TableCell>
+                      <TableCell>{funcionario.cargo}</TableCell>
+                      <TableCell>{funcionario.setor}</TableCell>
+                      <TableCell>
+                        <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.cor || "bg-blue-100 text-blue-800"}>
+                          {funcionario.permissao === "admin" ? "Administrador" : "Usuário"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusConfig[funcionario.status as keyof typeof statusConfig]?.cor || "bg-green-100 text-green-800"}>
+                          {funcionario.status === "inativo" ? "Inativo" : "Ativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Visualizar"
+                            onClick={() => {
+                              setFuncionarioSelecionado(funcionario)
+                              setModalDetalhes(true)
+                            }}
+                          >
+                            <Eye className="size-4 text-[#3ba5d8]" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Editar">
+                            <Pencil className="size-4 text-[#7ac142]" />
+                          </Button>
+                          {funcionario.status !== "inativo" && (
+                            <Button variant="ghost" size="icon" title="Inativar">
+                              <XCircle className="size-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Nenhum funcionário encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -352,13 +401,19 @@ export function GestaoFuncionariosPage() {
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Departamento</p>
-                  <p className="text-sm font-medium">{funcionarioSelecionado.departamento}</p>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <Building2 className="size-4 text-[#3ba5d8]" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Departamento</p>
+                    <p className="text-sm font-medium">{funcionarioSelecionado.setor}</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Data de Cadastro</p>
-                  <p className="text-sm font-medium">{funcionarioSelecionado.dataCadastro}</p>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <Calendar className="size-4 text-[#3ba5d8]" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Data de Cadastro</p>
+                    <p className="text-sm font-medium">{formatDateShort(funcionarioSelecionado.dataCadastro)}</p>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Permissão</p>
@@ -388,29 +443,61 @@ export function GestaoFuncionariosPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nome-func">Nome Completo</Label>
-              <Input id="nome-func" placeholder="Ex: João da Silva" />
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="nome-func">Nome Completo</Label>
+                <Input 
+                  id="nome-func" 
+                  placeholder="Ex: João Silva" 
+                  value={novoFunc.nome}
+                  onChange={(e) => setNovoFunc({...novoFunc, nome: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cpf-func">CPF</Label>
+                <Input 
+                  id="cpf-func" 
+                  placeholder="000.000.000-00" 
+                  value={novoFunc.cpf}
+                  onChange={(e) => setNovoFunc({...novoFunc, cpf: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email-func">E-mail Corporativo</Label>
+                <Input 
+                  id="email-func" 
+                  type="email" 
+                  placeholder="joao@empresa.com" 
+                  value={novoFunc.email}
+                  onChange={(e) => setNovoFunc({...novoFunc, email: e.target.value})}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email-func">E-mail</Label>
-                <Input id="email-func" type="email" placeholder="email@empresa.com" />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="telefone-func">Telefone</Label>
-                <Input id="telefone-func" placeholder="(11) 99999-9999" />
+                <Input 
+                  id="telefone-func" 
+                  placeholder="(11) 99999-9999" 
+                  value={novoFunc.telefone}
+                  onChange={(e) => setNovoFunc({...novoFunc, telefone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cargo-func">Cargo</Label>
+                <Input 
+                  id="cargo-func" 
+                  placeholder="Ex: Analista" 
+                  value={novoFunc.cargo}
+                  onChange={(e) => setNovoFunc({...novoFunc, cargo: e.target.value})}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="cargo-func">Cargo</Label>
-                <Input id="cargo-func" placeholder="Ex: Analista" />
-              </div>
-              <div className="space-y-2">
                 <Label>Departamento</Label>
-                <Select>
+                <Select value={novoFunc.setor} onValueChange={(val) => setNovoFunc({...novoFunc, setor: val})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -423,10 +510,23 @@ export function GestaoFuncionariosPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Nível de Suporte</Label>
+                <Select value={novoFunc.nivel} onValueChange={(val) => setNovoFunc({...novoFunc, nivel: val})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="n1">N1 - Básico</SelectItem>
+                    <SelectItem value="n2">N2 - Intermediário</SelectItem>
+                    <SelectItem value="n3">N3 - Avançado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Permissão</Label>
-              <Select>
+              <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -436,14 +536,36 @@ export function GestaoFuncionariosPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="senha-func">Senha</Label>
+                <Input 
+                  id="senha-func" 
+                  type="password" 
+                  placeholder="********" 
+                  value={novoFunc.senha}
+                  onChange={(e) => setNovoFunc({...novoFunc, senha: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmar-senha-func">Confirmar Senha</Label>
+                <Input 
+                  id="confirmar-senha-func" 
+                  type="password" 
+                  placeholder="********" 
+                  value={novoFunc.confirmarSenha}
+                  onChange={(e) => setNovoFunc({...novoFunc, confirmarSenha: e.target.value})}
+                />
+              </div>
+            </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalCadastro(false)}>
+            <Button variant="outline" onClick={() => setModalCadastro(false)} disabled={saving}>
               Cancelar
             </Button>
-            <Button className="bg-[#7ac142] hover:bg-[#6ab035]">
-              Cadastrar
+            <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={handleCadastrar} disabled={saving}>
+              {saving ? "Cadastrando..." : "Cadastrar"}
             </Button>
           </DialogFooter>
         </DialogContent>

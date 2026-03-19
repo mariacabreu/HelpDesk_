@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,92 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { formatDate } from "@/lib/utils"
 import { 
   Building2, User, Mail, Eye, Paperclip, History, MessageSquare, XCircle, 
   Search, Filter, Calendar, Clock, AlertTriangle, CheckCircle2 
 } from "lucide-react"
 
-const chamadosMock = [
-  { 
-    id: "CH-001", 
-    titulo: "Sistema não inicia", 
-    prioridade: "alta", 
-    status: "aberto", 
-    dataAbertura: "2024-01-15 09:30",
-    tipo: "incidente",
-    equipamento: "Notebook Dell Latitude",
-    descricao: "O sistema operacional não está iniciando. Aparece tela azul com erro.",
-    anexos: ["erro.png", "foto_tela.jpg"],
-    historico: [
-      { data: "2024-01-15 09:30", acao: "Chamado aberto", usuario: "João Silva" },
-      { data: "2024-01-15 10:15", acao: "Chamado visualizado pelo suporte", usuario: "Sistema" },
-    ]
-  },
-  { 
-    id: "CH-002", 
-    titulo: "Solicitação de novo monitor", 
-    prioridade: "baixa", 
-    status: "em_atendimento", 
-    dataAbertura: "2024-01-14 14:00",
-    tipo: "solicitacao",
-    equipamento: "N/A",
-    descricao: "Necessito de um segundo monitor para aumentar a produtividade.",
-    anexos: [],
-    historico: [
-      { data: "2024-01-14 14:00", acao: "Chamado aberto", usuario: "João Silva" },
-      { data: "2024-01-14 15:30", acao: "Chamado atribuído ao técnico Carlos", usuario: "Sistema" },
-      { data: "2024-01-15 08:00", acao: "Em análise de disponibilidade", usuario: "Carlos Souza" },
-    ]
-  },
-  { 
-    id: "CH-003", 
-    titulo: "Impressora não imprime", 
-    prioridade: "media", 
-    status: "escalonado", 
-    dataAbertura: "2024-01-13 11:20",
-    tipo: "incidente",
-    equipamento: "Impressora Epson L3150",
-    descricao: "A impressora está ligada mas não recebe os trabalhos de impressão.",
-    anexos: ["config_impressora.pdf"],
-    historico: [
-      { data: "2024-01-13 11:20", acao: "Chamado aberto", usuario: "João Silva" },
-      { data: "2024-01-13 12:00", acao: "Escalonado para N2", usuario: "Maria Fernandes" },
-    ]
-  },
-  { 
-    id: "CH-004", 
-    titulo: "Atualização do Office", 
-    prioridade: "baixa", 
-    status: "resolvido", 
-    dataAbertura: "2024-01-10 16:45",
-    tipo: "solicitacao",
-    equipamento: "Desktop HP ProDesk",
-    descricao: "Solicito atualização do pacote Office para a versão mais recente.",
-    anexos: [],
-    historico: [
-      { data: "2024-01-10 16:45", acao: "Chamado aberto", usuario: "João Silva" },
-      { data: "2024-01-11 09:00", acao: "Atualização realizada com sucesso", usuario: "Pedro Alves" },
-      { data: "2024-01-11 09:30", acao: "Chamado resolvido", usuario: "Pedro Alves" },
-    ]
-  },
-  { 
-    id: "CH-005", 
-    titulo: "VPN não conecta", 
-    prioridade: "alta", 
-    status: "fechado", 
-    dataAbertura: "2024-01-08 08:00",
-    tipo: "incidente",
-    equipamento: "Notebook Dell Latitude",
-    descricao: "Não consigo conectar na VPN da empresa para acessar os sistemas.",
-    anexos: ["erro_vpn.png"],
-    historico: [
-      { data: "2024-01-08 08:00", acao: "Chamado aberto", usuario: "João Silva" },
-      { data: "2024-01-08 08:30", acao: "Problema identificado: certificado expirado", usuario: "Ana Costa" },
-      { data: "2024-01-08 09:00", acao: "Certificado renovado", usuario: "Ana Costa" },
-      { data: "2024-01-08 09:15", acao: "Chamado fechado pelo usuário", usuario: "João Silva" },
-    ]
-  },
-]
+
 
 const prioridadeConfig = {
   baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
@@ -113,29 +34,50 @@ const statusConfig = {
 }
 
 export function MeusChamadosPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [chamados, setChamados] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [filtroStatus, setFiltroStatus] = useState("")
   const [filtroPrioridade, setFiltroPrioridade] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("")
   const [busca, setBusca] = useState("")
-  const [chamadoSelecionado, setChamadoSelecionado] = useState<typeof chamadosMock[0] | null>(null)
+  const [chamadoSelecionado, setChamadoSelecionado] = useState<any | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [modalComentario, setModalComentario] = useState(false)
   const [novoComentario, setNovoComentario] = useState("")
 
-  const chamadosFiltrados = chamadosMock.filter(chamado => {
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      
+      const solicitanteId = user.id
+      if (solicitanteId) {
+        fetch(`http://localhost:8000/chamados/solicitante/${solicitanteId}`)
+          .then(res => res.json())
+          .then(data => setChamados(data))
+          .catch(err => console.error("Erro ao buscar chamados:", err))
+          .finally(() => setLoading(false))
+      }
+    }
+  }, [])
+
+  const chamadosFiltrados = chamados.filter(chamado => {
     if (filtroStatus && chamado.status !== filtroStatus) return false
     if (filtroPrioridade && chamado.prioridade !== filtroPrioridade) return false
     if (filtroTipo && chamado.tipo !== filtroTipo) return false
-    if (busca && !chamado.titulo.toLowerCase().includes(busca.toLowerCase()) && !chamado.id.toLowerCase().includes(busca.toLowerCase())) return false
+    if (busca && !chamado.titulo.toLowerCase().includes(busca.toLowerCase()) && 
+        !chamado.id.toString().includes(busca)) return false
     return true
   })
 
-  const abrirDetalhes = (chamado: typeof chamadosMock[0]) => {
+  const abrirDetalhes = (chamado: any) => {
     setChamadoSelecionado(chamado)
     setModalAberto(true)
   }
 
-  const abrirComentario = (chamado: typeof chamadosMock[0]) => {
+  const abrirComentario = (chamado: any) => {
     setChamadoSelecionado(chamado)
     setModalComentario(true)
   }
@@ -273,48 +215,62 @@ export function MeusChamadosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {chamadosFiltrados.map((chamado) => (
-                  <TableRow key={chamado.id}>
-                    <TableCell className="font-mono font-medium">{chamado.id}</TableCell>
-                    <TableCell className="font-medium">{chamado.titulo}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {chamado.tipo === "incidente" ? "Incidente" : "Solicitação"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={prioridadeConfig[chamado.prioridade as keyof typeof prioridadeConfig].cor}>
-                        {prioridadeConfig[chamado.prioridade as keyof typeof prioridadeConfig].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusConfig[chamado.status as keyof typeof statusConfig].cor}>
-                        {statusConfig[chamado.status as keyof typeof statusConfig].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {chamado.dataAbertura}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(chamado)}>
-                          <Eye className="size-4 text-[#3ba5d8]" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Ver anexos" disabled={chamado.anexos.length === 0}>
-                          <Paperclip className="size-4 text-[#7ac142]" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Comentar" onClick={() => abrirComentario(chamado)}>
-                          <MessageSquare className="size-4 text-[#1a3a5c]" />
-                        </Button>
-                        {chamado.status !== "fechado" && chamado.status !== "resolvido" && (
-                          <Button variant="ghost" size="icon" title="Cancelar chamado">
-                            <XCircle className="size-4 text-red-500" />
-                          </Button>
-                        )}
-                      </div>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Carregando chamados...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : chamadosFiltrados.length > 0 ? (
+                  chamadosFiltrados.map((chamado) => (
+                    <TableRow key={chamado.id}>
+                      <TableCell className="font-mono font-medium">CH-{chamado.id.toString().padStart(3, '0')}</TableCell>
+                      <TableCell className="font-medium">{chamado.titulo}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {chamado.tipo}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={prioridadeConfig[chamado.prioridade.toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
+                          {prioridadeConfig[chamado.prioridade.toLowerCase() as keyof typeof prioridadeConfig]?.label || chamado.prioridade}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusConfig[chamado.status.toLowerCase() as keyof typeof statusConfig]?.cor}>
+                          {statusConfig[chamado.status.toLowerCase() as keyof typeof statusConfig]?.label || chamado.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(chamado.data_abertura)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(chamado)}>
+                            <Eye className="size-4 text-[#3ba5d8]" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Ver anexos" disabled={!chamado.anexos || chamado.anexos.length === 0}>
+                            <Paperclip className="size-4 text-[#7ac142]" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Comentar" onClick={() => abrirComentario(chamado)}>
+                            <MessageSquare className="size-4 text-[#1a3a5c]" />
+                          </Button>
+                          {chamado.status !== "fechado" && chamado.status !== "resolvido" && (
+                            <Button variant="ghost" size="icon" title="Cancelar chamado">
+                              <XCircle className="size-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Nenhum chamado encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -408,7 +364,7 @@ export function MeusChamadosPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{item.acao}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.data} - {item.usuario}
+                          {formatDate(item.data)} - {item.usuario}
                         </p>
                       </div>
                     </div>

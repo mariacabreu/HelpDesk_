@@ -9,53 +9,12 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
+import { formatDateShort, formatDate } from "@/lib/utils"
+import { toast } from "sonner"
 import { 
   Database, Download, Upload, Clock, CheckCircle, AlertCircle, 
   HardDrive, RefreshCw, Calendar, Settings 
 } from "lucide-react"
-
-const backupsMock = [
-  { 
-    id: "BKP-001",
-    data: "2024-01-15 02:00:00",
-    tipo: "automatico",
-    tamanho: "2.5 GB",
-    status: "concluido",
-    duracao: "15 min"
-  },
-  { 
-    id: "BKP-002",
-    data: "2024-01-14 02:00:00",
-    tipo: "automatico",
-    tamanho: "2.4 GB",
-    status: "concluido",
-    duracao: "14 min"
-  },
-  { 
-    id: "BKP-003",
-    data: "2024-01-13 14:30:00",
-    tipo: "manual",
-    tamanho: "2.4 GB",
-    status: "concluido",
-    duracao: "16 min"
-  },
-  { 
-    id: "BKP-004",
-    data: "2024-01-13 02:00:00",
-    tipo: "automatico",
-    tamanho: "2.3 GB",
-    status: "concluido",
-    duracao: "13 min"
-  },
-  { 
-    id: "BKP-005",
-    data: "2024-01-12 02:00:00",
-    tipo: "automatico",
-    tamanho: "2.3 GB",
-    status: "erro",
-    duracao: "N/A"
-  },
-]
 
 const statusConfig = {
   concluido: { label: "Concluído", cor: "bg-green-100 text-green-800", icon: CheckCircle },
@@ -64,11 +23,28 @@ const statusConfig = {
 }
 
 export function BackupPage() {
+  const [backups, setBackups] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [backupAutomatico, setBackupAutomatico] = useState(true)
   const [horarioBackup, setHorarioBackup] = useState("02:00")
   const [retencao, setRetencao] = useState("30")
   const [executandoBackup, setExecutandoBackup] = useState(false)
   const [progressoBackup, setProgressoBackup] = useState(0)
+
+  useEffect(() => {
+    // Carregar histórico de backups (simulado por enquanto)
+    setBackups([
+      { 
+        id: "BKP-001",
+        data: "2024-01-15 02:00:00",
+        tipo: "automatico",
+        tamanho: "2.5 GB",
+        status: "concluido",
+        duracao: "15 min"
+      }
+    ])
+    setLoading(false)
+  }, [])
 
   const iniciarBackup = () => {
     setExecutandoBackup(true)
@@ -78,6 +54,19 @@ export function BackupPage() {
         if (prev >= 100) {
           clearInterval(interval)
           setExecutandoBackup(false)
+          
+          // Adicionar novo backup à lista
+          const novoBkp = {
+            id: `BKP-00${backups.length + 1}`,
+            data: new Date().toISOString().replace('T', ' ').split('.')[0],
+            tipo: "manual" as const,
+            tamanho: "2.5 GB",
+            status: "concluido" as const,
+            duracao: "2 min"
+          }
+          setBackups([novoBkp, ...backups])
+          toast.success("Backup manual concluído com sucesso!")
+          
           return 100
         }
         return prev + 10
@@ -85,8 +74,12 @@ export function BackupPage() {
     }, 500)
   }
 
-  const totalBackups = backupsMock.filter(b => b.status === "concluido").length
-  const ultimoBackup = backupsMock.find(b => b.status === "concluido")
+  const salvarConfiguracoes = () => {
+    toast.success("Configurações de backup salvas com sucesso!")
+  }
+
+  const totalBackups = backups.filter(b => b.status === "concluido").length
+  const ultimoBackup = backups.find(b => b.status === "concluido")
 
   return (
     <div className="space-y-6">
@@ -154,7 +147,7 @@ export function BackupPage() {
                 <Calendar className="size-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#1a3a5c]">{ultimoBackup?.data.split(' ')[0]}</p>
+                <p className="text-sm font-bold text-[#1a3a5c]">{formatDateShort(ultimoBackup?.data)}</p>
                 <p className="text-xs text-muted-foreground">Último Backup</p>
               </div>
             </div>
@@ -244,7 +237,7 @@ export function BackupPage() {
             </div>
           </div>
           
-          <Button className="bg-[#3ba5d8] hover:bg-[#2d8bc0]">
+          <Button className="bg-[#3ba5d8] hover:bg-[#2d8bc0]" onClick={salvarConfiguracoes}>
             Salvar Configurações
           </Button>
         </CardContent>
@@ -274,39 +267,53 @@ export function BackupPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {backupsMock.map((backup) => {
-                  const config = statusConfig[backup.status as keyof typeof statusConfig]
-                  const IconStatus = config.icon
-                  return (
-                    <TableRow key={backup.id}>
-                      <TableCell className="font-mono text-sm">{backup.id}</TableCell>
-                      <TableCell className="font-mono text-sm">{backup.data}</TableCell>
-                      <TableCell className="capitalize">{backup.tipo}</TableCell>
-                      <TableCell>{backup.tamanho}</TableCell>
-                      <TableCell>{backup.duracao}</TableCell>
-                      <TableCell>
-                        <Badge className={config.cor}>
-                          <IconStatus className="size-3 mr-1" />
-                          {config.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {backup.status === "concluido" && (
-                            <>
-                              <Button variant="ghost" size="icon" title="Download">
-                                <Download className="size-4 text-[#3ba5d8]" />
-                              </Button>
-                              <Button variant="ghost" size="icon" title="Restaurar">
-                                <Upload className="size-4 text-[#7ac142]" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Carregando histórico...
+                    </TableCell>
+                  </TableRow>
+                ) : backups.length > 0 ? (
+                  backups.map((backup) => {
+                    const config = statusConfig[backup.status as keyof typeof statusConfig]
+                    const IconStatus = config.icon
+                    return (
+                      <TableRow key={backup.id}>
+                        <TableCell className="font-mono text-sm">{backup.id}</TableCell>
+                        <TableCell className="font-mono text-sm">{formatDate(backup.data)}</TableCell>
+                        <TableCell className="capitalize">{backup.tipo}</TableCell>
+                        <TableCell>{backup.tamanho}</TableCell>
+                        <TableCell>{backup.duracao}</TableCell>
+                        <TableCell>
+                          <Badge className={config.cor}>
+                            <IconStatus className="size-3 mr-1" />
+                            {config.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {backup.status === "concluido" && (
+                              <>
+                                <Button variant="ghost" size="icon" title="Download">
+                                  <Download className="size-4 text-[#3ba5d8]" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Restaurar">
+                                  <Upload className="size-4 text-[#7ac142]" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Nenhum backup encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

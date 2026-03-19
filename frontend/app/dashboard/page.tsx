@@ -54,7 +54,7 @@ export default function DashboardPage() {
       case "dashboard-empresa":
         return <DashboardEmpresaPage />
       case "novo-chamado":
-        return <NovoChamadoPage />
+        return <NovoChamadoPage onTicketCreated={() => setActiveTab("meus-chamados")} />
       case "meus-chamados":
         return <MeusChamadosPage />
       case "meus-equipamentos":
@@ -79,13 +79,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-screen overflow-hidden">
       {userRole === "suporte" ? (
         <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       ) : (
         <CompanySidebar activeTab={activeTab} onTabChange={setActiveTab} />
       )}
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
         <DashboardHeader 
           userRole={userRole} 
           onRoleChange={handleRoleChange} 
@@ -93,8 +93,10 @@ export default function DashboardPage() {
           userEmail={userData?.email}
           userCargo={userData?.cargo}
         />
-        <main className="flex-1 overflow-auto p-6 bg-gray-50/50">
-          {renderContent()}
+        <main className="flex-1 overflow-auto p-4 lg:p-6 bg-gray-50/50">
+          <div className="max-w-7xl mx-auto h-full">
+            {renderContent()}
+          </div>
         </main>
         <DashboardFooter />
       </SidebarInset>

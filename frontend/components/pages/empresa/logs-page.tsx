@@ -8,82 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { formatDate } from "@/lib/utils"
 import { Search, Filter, FileText, Download, AlertCircle, CheckCircle, Info, AlertTriangle } from "lucide-react"
-
-const logsMock = [
-  { 
-    id: "LOG-001",
-    timestamp: "2024-01-15 14:32:15",
-    tipo: "info",
-    modulo: "Autenticação",
-    usuario: "João Silva",
-    acao: "Login realizado com sucesso",
-    ip: "192.168.1.100"
-  },
-  { 
-    id: "LOG-002",
-    timestamp: "2024-01-15 14:30:45",
-    tipo: "success",
-    modulo: "Chamados",
-    usuario: "João Silva",
-    acao: "Chamado CH-001 criado",
-    ip: "192.168.1.100"
-  },
-  { 
-    id: "LOG-003",
-    timestamp: "2024-01-15 14:28:00",
-    tipo: "warning",
-    modulo: "Equipamentos",
-    usuario: "Maria Santos",
-    acao: "Tentativa de edição sem permissão",
-    ip: "192.168.1.101"
-  },
-  { 
-    id: "LOG-004",
-    timestamp: "2024-01-15 14:25:30",
-    tipo: "error",
-    modulo: "Sistema",
-    usuario: "Sistema",
-    acao: "Erro ao conectar com servidor de e-mail",
-    ip: "127.0.0.1"
-  },
-  { 
-    id: "LOG-005",
-    timestamp: "2024-01-15 14:20:00",
-    tipo: "info",
-    modulo: "Funcionários",
-    usuario: "Carlos Souza",
-    acao: "Funcionário FUNC-004 inativado",
-    ip: "192.168.1.102"
-  },
-  { 
-    id: "LOG-006",
-    timestamp: "2024-01-15 14:15:00",
-    tipo: "success",
-    modulo: "Backup",
-    usuario: "Sistema",
-    acao: "Backup automático concluído",
-    ip: "127.0.0.1"
-  },
-  { 
-    id: "LOG-007",
-    timestamp: "2024-01-15 13:00:00",
-    tipo: "info",
-    modulo: "Autenticação",
-    usuario: "Pedro Oliveira",
-    acao: "Logout realizado",
-    ip: "192.168.1.103"
-  },
-  { 
-    id: "LOG-008",
-    timestamp: "2024-01-15 12:45:00",
-    tipo: "warning",
-    modulo: "Segurança",
-    usuario: "Sistema",
-    acao: "Múltiplas tentativas de login falhas detectadas",
-    ip: "192.168.1.200"
-  },
-]
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 const tipoConfig = {
   info: { label: "Info", cor: "bg-blue-100 text-blue-800", icon: Info },
@@ -93,17 +21,67 @@ const tipoConfig = {
 }
 
 export function LogsPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [logs, setLogs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("")
   const [filtroModulo, setFiltroModulo] = useState("")
 
-  const logsFiltrados = logsMock.filter(log => {
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      
+      // Simulação de busca de logs do backend (não há endpoint real para isso ainda)
+      // Mas removemos o mock estático global
+      setLogs([])
+      setLoading(false)
+    }
+  }, [])
+
+  const logsFiltrados = logs.filter(log => {
     if (filtroTipo && log.tipo !== filtroTipo) return false
     if (filtroModulo && log.modulo !== filtroModulo) return false
     if (busca && !log.acao.toLowerCase().includes(busca.toLowerCase()) && 
         !log.usuario.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
+
+  const exportarPDF = () => {
+    const doc = new jsPDF()
+    
+    // Título
+    doc.setFontSize(18)
+    doc.text("Relatório de Logs do Sistema", 14, 22)
+    
+    // Data de exportação
+    doc.setFontSize(11)
+    doc.setTextColor(100)
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30)
+    
+    // Tabela
+    const tableData = logsFiltrados.map(log => [
+      formatDate(log.timestamp),
+      log.tipo.toUpperCase(),
+      log.modulo,
+      log.usuario,
+      log.acao,
+      log.ip
+    ])
+    
+    autoTable(doc, {
+      head: [['Timestamp', 'Tipo', 'Módulo', 'Usuário', 'Ação', 'IP']],
+      body: tableData,
+      startY: 35,
+      theme: 'grid',
+      headStyles: { fillColor: [26, 58, 92] }, // #1a3a5c
+      styles: { fontSize: 8 }
+    })
+    
+    doc.save(`logs-sistema-${new Date().getTime()}.pdf`)
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +90,7 @@ export function LogsPage() {
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Logs do Sistema</h1>
           <p className="text-muted-foreground">Monitore todas as atividades do sistema</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={exportarPDF}>
           <Download className="size-4 mr-2" />
           Exportar Logs
         </Button>
@@ -128,7 +106,7 @@ export function LogsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {logsMock.filter(l => l.tipo === "info").length}
+                  {logs.filter(l => l.tipo === "info").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Informativos</p>
               </div>
@@ -143,7 +121,7 @@ export function LogsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {logsMock.filter(l => l.tipo === "success").length}
+                  {logs.filter(l => l.tipo === "success").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Sucessos</p>
               </div>
@@ -158,7 +136,7 @@ export function LogsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {logsMock.filter(l => l.tipo === "warning").length}
+                  {logs.filter(l => l.tipo === "warning").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Alertas</p>
               </div>
@@ -173,7 +151,7 @@ export function LogsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {logsMock.filter(l => l.tipo === "error").length}
+                  {logs.filter(l => l.tipo === "error").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Erros</p>
               </div>
@@ -271,25 +249,38 @@ export function LogsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logsFiltrados.map((log) => {
-                  const config = tipoConfig[log.tipo as keyof typeof tipoConfig]
-                  const IconTipo = config.icon
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-mono text-xs">{log.timestamp}</TableCell>
-                      <TableCell>
-                        <Badge className={config.cor}>
-                          <IconTipo className="size-3 mr-1" />
-                          {config.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{log.modulo}</TableCell>
-                      <TableCell className="text-sm">{log.usuario}</TableCell>
-                      <TableCell className="text-sm">{log.acao}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{log.ip}</TableCell>
-                    </TableRow>
-                  )
-                })}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Carregando logs...
+                    </TableCell>
+                  </TableRow>
+                ) : logsFiltrados.length > 0 ? (
+                  logsFiltrados.map((log) => {
+                    const config = tipoConfig[log.tipo as keyof typeof tipoConfig]
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-mono text-xs">{formatDate(log.timestamp)}</TableCell>
+                        <TableCell>
+                          <Badge className={config.cor}>
+                            <config.icon className="size-3 mr-1" />
+                            {config.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{log.modulo}</TableCell>
+                        <TableCell className="text-sm">{log.usuario}</TableCell>
+                        <TableCell className="text-sm">{log.acao}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{log.ip}</TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhum registro encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

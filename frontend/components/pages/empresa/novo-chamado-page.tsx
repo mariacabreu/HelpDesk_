@@ -17,7 +17,11 @@ const slaInfo = {
   alta: { tempo: "8 horas", cor: "bg-red-100 text-red-800" },
 }
 
-export function NovoChamadoPage() {
+interface NovoChamadoPageProps {
+  onTicketCreated?: () => void
+}
+
+export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
   const [userData, setUserData] = useState<any>(null)
   const [equipamentos, setEquipamentos] = useState<any[]>([])
   const [tipoChamado, setTipoChamado] = useState("")
@@ -105,6 +109,9 @@ export function NovoChamadoPage() {
 
       alert("Chamado aberto com sucesso!")
       limparFormulario()
+      if (onTicketCreated) {
+        onTicketCreated()
+      }
     } catch (err: any) {
       console.error("Erro:", err)
       alert(err.message || "Ocorreu um erro ao tentar abrir o chamado.")
@@ -142,21 +149,21 @@ export function NovoChamadoPage() {
                 <Building2 className="size-5 text-[#3ba5d8]" />
                 <div>
                   <p className="text-xs text-muted-foreground">Empresa</p>
-                  <p className="font-medium text-[#1a3a5c]">{userData?.empresa?.nome_fantasia || "Tech Solutions Ltda"}</p>
+                  <p className="font-medium text-[#1a3a5c]">{userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "Empresa não identificada"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <User className="size-5 text-[#3ba5d8]" />
                 <div>
                   <p className="text-xs text-muted-foreground">Solicitante</p>
-                  <p className="font-medium text-[#1a3a5c]">{userData?.nome || "João Silva"}</p>
+                  <p className="font-medium text-[#1a3a5c]">{userData?.nome || "Usuário não identificado"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <Mail className="size-5 text-[#3ba5d8]" />
-                <div>
+                <div className="overflow-hidden">
                   <p className="text-xs text-muted-foreground">E-mail</p>
-                  <p className="font-medium text-[#1a3a5c]">{userData?.email || "joao@techsolutions.com"}</p>
+                  <p className="font-medium text-[#1a3a5c] break-all">{userData?.email || "E-mail não identificado"}</p>
                 </div>
               </div>
             </div>

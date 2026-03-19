@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,104 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server } from "lucide-react"
 
-const equipamentosMock = [
-  { 
-    id: "EQ-001", 
-    nome: "Notebook Dell Latitude 5520",
-    tipo: "notebook",
-    patrimonio: "NB-2024-001",
-    modelo: "Latitude 5520",
-    marca: "Dell",
-    status: "ativo",
-    chamados: 3,
-    especificacoes: {
-      processador: "Intel Core i7-1165G7",
-      memoria: "16GB DDR4",
-      armazenamento: "SSD 512GB",
-      sistemaOperacional: "Windows 11 Pro"
-    },
-    historicoChamados: [
-      { id: "CH-001", titulo: "Sistema não inicia", data: "2024-01-15", status: "aberto" },
-      { id: "CH-008", titulo: "Atualização de drivers", data: "2023-12-20", status: "fechado" },
-      { id: "CH-012", titulo: "Tela travando", data: "2023-11-10", status: "fechado" },
-    ]
-  },
-  { 
-    id: "EQ-002", 
-    nome: "Desktop HP ProDesk 400 G7",
-    tipo: "desktop",
-    patrimonio: "DT-2024-002",
-    modelo: "ProDesk 400 G7",
-    marca: "HP",
-    status: "ativo",
-    chamados: 1,
-    especificacoes: {
-      processador: "Intel Core i5-10500",
-      memoria: "8GB DDR4",
-      armazenamento: "SSD 256GB",
-      sistemaOperacional: "Windows 10 Pro"
-    },
-    historicoChamados: [
-      { id: "CH-004", titulo: "Atualização do Office", data: "2024-01-10", status: "resolvido" },
-    ]
-  },
-  { 
-    id: "EQ-003", 
-    nome: "Impressora Epson L3150",
-    tipo: "impressora",
-    patrimonio: "IMP-2024-003",
-    modelo: "L3150",
-    marca: "Epson",
-    status: "manutencao",
-    chamados: 2,
-    especificacoes: {
-      tipo: "Multifuncional",
-      tecnologia: "Jato de Tinta",
-      conexao: "Wi-Fi / USB",
-      velocidade: "33 ppm"
-    },
-    historicoChamados: [
-      { id: "CH-003", titulo: "Impressora não imprime", data: "2024-01-13", status: "escalonado" },
-      { id: "CH-015", titulo: "Troca de cabeça de impressão", data: "2023-10-05", status: "fechado" },
-    ]
-  },
-  { 
-    id: "EQ-004", 
-    nome: "Monitor LG 24MK430H",
-    tipo: "monitor",
-    patrimonio: "MON-2024-004",
-    modelo: "24MK430H",
-    marca: "LG",
-    status: "ativo",
-    chamados: 0,
-    especificacoes: {
-      tamanho: "24 polegadas",
-      resolucao: "1920x1080 Full HD",
-      painel: "IPS",
-      conexoes: "HDMI / VGA"
-    },
-    historicoChamados: []
-  },
-  { 
-    id: "EQ-005", 
-    nome: "Notebook Lenovo ThinkPad",
-    tipo: "notebook",
-    patrimonio: "NB-2024-005",
-    modelo: "ThinkPad E14",
-    marca: "Lenovo",
-    status: "inativo",
-    chamados: 5,
-    especificacoes: {
-      processador: "Intel Core i5-1135G7",
-      memoria: "8GB DDR4",
-      armazenamento: "SSD 256GB",
-      sistemaOperacional: "Windows 10 Pro"
-    },
-    historicoChamados: [
-      { id: "CH-020", titulo: "Equipamento com defeito", data: "2024-01-02", status: "fechado" },
-    ]
-  },
-]
+
 
 const tipoIcon = {
   notebook: Laptop,
@@ -126,23 +29,42 @@ const statusConfig = {
 }
 
 export function MeusEquipamentosPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [equipamentos, setEquipamentos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("")
   const [filtroStatus, setFiltroStatus] = useState("")
-  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<typeof equipamentosMock[0] | null>(null)
+  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
 
-  const equipamentosFiltrados = equipamentosMock.filter(eq => {
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      
+      const empresaId = user.empresa?.id
+      if (empresaId) {
+        fetch(`http://localhost:8000/equipamentos/${empresaId}`)
+          .then(res => res.json())
+          .then(data => setEquipamentos(data))
+          .catch(err => console.error("Erro ao buscar equipamentos:", err))
+          .finally(() => setLoading(false))
+      }
+    }
+  }, [])
+
+  const equipamentosFiltrados = equipamentos.filter(eq => {
     if (filtroTipo && eq.tipo !== filtroTipo) return false
     if (filtroStatus && eq.status !== filtroStatus) return false
     if (busca && !eq.nome.toLowerCase().includes(busca.toLowerCase()) && 
-        !eq.patrimonio.toLowerCase().includes(busca.toLowerCase()) &&
-        !eq.modelo.toLowerCase().includes(busca.toLowerCase())) return false
+        !eq.patrimonio.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
-  const abrirDetalhes = (equipamento: typeof equipamentosMock[0]) => {
+  const abrirDetalhes = (equipamento: any) => {
     setEquipamentoSelecionado(equipamento)
     setModalDetalhes(true)
   }
@@ -245,49 +167,66 @@ export function MeusEquipamentosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {equipamentosFiltrados.map((equipamento) => {
-                  const IconTipo = tipoIcon[equipamento.tipo as keyof typeof tipoIcon] || Monitor
-                  return (
-                    <TableRow key={equipamento.id}>
-                      <TableCell className="font-mono text-sm">{equipamento.id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <IconTipo className="size-4 text-[#3ba5d8]" />
-                          <span className="font-medium">{equipamento.nome}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="capitalize">{equipamento.tipo}</TableCell>
-                      <TableCell className="font-mono text-sm">{equipamento.patrimonio}</TableCell>
-                      <TableCell>{equipamento.modelo}</TableCell>
-                      <TableCell>
-                        <Badge className={statusConfig[equipamento.status as keyof typeof statusConfig].cor}>
-                          {statusConfig[equipamento.status as keyof typeof statusConfig].label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline">{equipamento.chamados}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(equipamento)}>
-                            <Eye className="size-4 text-[#3ba5d8]" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Ver chamados">
-                            <ClipboardList className="size-4 text-[#7ac142]" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Editar">
-                            <Pencil className="size-4 text-[#1a3a5c]" />
-                          </Button>
-                          {equipamento.status !== "inativo" && (
-                            <Button variant="ghost" size="icon" title="Inativar">
-                              <XCircle className="size-4 text-red-500" />
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Carregando equipamentos...
+                    </TableCell>
+                  </TableRow>
+                ) : equipamentosFiltrados.length > 0 ? (
+                  equipamentosFiltrados.map((eq) => {
+                    const Icon = tipoIcon[eq.tipo.toLowerCase() as keyof typeof tipoIcon] || Monitor
+                    const config = statusConfig[eq.status.toLowerCase() as keyof typeof statusConfig]
+                    return (
+                      <TableRow key={eq.id}>
+                        <TableCell className="font-mono text-sm">{eq.id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gray-100 rounded-lg">
+                              <Icon className="size-4 text-[#1a3a5c]" />
+                            </div>
+                            <span className="font-medium">{eq.nome}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="capitalize">{eq.tipo}</TableCell>
+                        <TableCell className="font-mono text-xs">{eq.patrimonio}</TableCell>
+                        <TableCell>{eq.modelo}</TableCell>
+                        <TableCell>
+                          <Badge className={config?.cor || "bg-gray-100 text-gray-800"}>
+                            {config?.label || eq.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {eq.chamados_count || eq.chamados || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(eq)}>
+                              <Eye className="size-4 text-[#3ba5d8]" />
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                            <Button variant="ghost" size="icon" title="Abrir Chamado">
+                              <ClipboardList className="size-4 text-[#7ac142]" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Editar">
+                              <Pencil className="size-4 text-[#1a3a5c]" />
+                            </Button>
+                            {eq.status !== "inativo" && (
+                              <Button variant="ghost" size="icon" title="Inativar">
+                                <XCircle className="size-4 text-red-500" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Nenhum equipamento encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

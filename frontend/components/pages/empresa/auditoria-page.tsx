@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,143 +10,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { formatDate } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
   Clock, ArrowRight, Database, Settings, Lock
 } from "lucide-react"
 
-const auditoriaMock = [
-  { 
-    id: "AUD-001",
-    timestamp: "2024-01-15 14:32:15",
-    usuario: "João Silva",
-    modulo: "Chamados",
-    acao: "Criar",
-    descricao: "Criou novo chamado CH-001",
-    detalhes: {
-      antes: null,
-      depois: {
-        id: "CH-001",
-        titulo: "Sistema não inicia",
-        prioridade: "alta",
-        status: "aberto"
-      }
-    },
-    ip: "192.168.1.100"
-  },
-  { 
-    id: "AUD-002",
-    timestamp: "2024-01-15 14:25:00",
-    usuario: "Carlos Souza",
-    modulo: "Funcionários",
-    acao: "Atualizar",
-    descricao: "Alterou status do funcionário FUNC-004",
-    detalhes: {
-      antes: { status: "ativo" },
-      depois: { status: "inativo" }
-    },
-    ip: "192.168.1.102"
-  },
-  { 
-    id: "AUD-003",
-    timestamp: "2024-01-15 13:50:00",
-    usuario: "Maria Santos",
-    modulo: "Equipamentos",
-    acao: "Atualizar",
-    descricao: "Editou equipamento EQ-003",
-    detalhes: {
-      antes: { status: "ativo" },
-      depois: { status: "manutencao" }
-    },
-    ip: "192.168.1.101"
-  },
-  { 
-    id: "AUD-004",
-    timestamp: "2024-01-15 11:30:00",
-    usuario: "Pedro Oliveira",
-    modulo: "Chamados",
-    acao: "Atualizar",
-    descricao: "Adicionou comentário ao chamado CH-002",
-    detalhes: {
-      antes: null,
-      depois: { comentario: "Aguardando aprovação de orçamento" }
-    },
-    ip: "192.168.1.103"
-  },
-  { 
-    id: "AUD-005",
-    timestamp: "2024-01-15 10:00:00",
-    usuario: "Sistema",
-    modulo: "Backup",
-    acao: "Executar",
-    descricao: "Backup automático realizado",
-    detalhes: {
-      antes: null,
-      depois: { arquivo: "BKP-001", tamanho: "2.5 GB" }
-    },
-    ip: "127.0.0.1"
-  },
-  { 
-    id: "AUD-006",
-    timestamp: "2024-01-14 16:45:00",
-    usuario: "Carlos Souza",
-    modulo: "Configurações",
-    acao: "Atualizar",
-    descricao: "Alterou configurações de backup",
-    detalhes: {
-      antes: { horario: "03:00", retencao: 15 },
-      depois: { horario: "02:00", retencao: 30 }
-    },
-    ip: "192.168.1.102"
-  },
-  { 
-    id: "AUD-007",
-    timestamp: "2024-01-14 15:30:00",
-    usuario: "João Silva",
-    modulo: "Equipamentos",
-    acao: "Criar",
-    descricao: "Cadastrou novo equipamento EQ-005",
-    detalhes: {
-      antes: null,
-      depois: {
-        id: "EQ-005",
-        nome: "Notebook Lenovo ThinkPad",
-        patrimonio: "NB-2024-005"
-      }
-    },
-    ip: "192.168.1.100"
-  },
-]
 
-const acaoConfig = {
-  Criar: { cor: "bg-green-100 text-green-800" },
-  Atualizar: { cor: "bg-blue-100 text-blue-800" },
-  Excluir: { cor: "bg-red-100 text-red-800" },
-  Executar: { cor: "bg-purple-100 text-purple-800" },
-}
-
-const moduloIcons = {
-  Chamados: FileText,
-  Funcionários: User,
-  Equipamentos: Database,
-  Backup: Database,
-  Configurações: Settings,
-  Autenticação: Lock,
-}
 
 export function AuditoriaPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [auditoria, setAuditoria] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [filtroModulo, setFiltroModulo] = useState("")
   const [filtroAcao, setFiltroAcao] = useState("")
   const [filtroUsuario, setFiltroUsuario] = useState("")
-  const [registroSelecionado, setRegistroSelecionado] = useState<typeof auditoriaMock[0] | null>(null)
+  const [registroSelecionado, setRegistroSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
 
-  const registrosFiltrados = auditoriaMock.filter(registro => {
-    if (filtroModulo && registro.modulo !== filtroModulo) return false
-    if (filtroAcao && registro.acao !== filtroAcao) return false
-    if (filtroUsuario && registro.usuario !== filtroUsuario) return false
-    if (busca && !registro.descricao.toLowerCase().includes(busca.toLowerCase())) return false
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      
+      // Simulação de busca de auditoria (não há endpoint real para isso ainda)
+      setAuditoria(auditoriaMock)
+      setLoading(false)
+    }
+  }, [])
+
+  const registrosFiltrados = auditoria.filter(item => {
+    if (filtroModulo && item.modulo !== filtroModulo) return false
+    if (filtroAcao && item.acao !== filtroAcao) return false
+    if (filtroUsuario && item.usuario !== filtroUsuario) return false
+    if (busca && !item.descricao.toLowerCase().includes(busca.toLowerCase()) && 
+        !item.usuario.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
@@ -331,7 +231,7 @@ export function AuditoriaPage() {
                   const ModuloIcon = moduloIcons[registro.modulo as keyof typeof moduloIcons] || FileText
                   return (
                     <TableRow key={registro.id}>
-                      <TableCell className="font-mono text-xs">{registro.timestamp}</TableCell>
+                      <TableCell className="font-mono text-xs">{formatDate(registro.timestamp)}</TableCell>
                       <TableCell>{registro.usuario}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

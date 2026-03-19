@@ -106,7 +106,7 @@ class Chamado(Base):
     equipamento = relationship("Equipamento", back_populates="chamados")
 
 # Configuração do Banco de Dados
-DATABASE_URL = "sqlite:///helpdesk.db"
+DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

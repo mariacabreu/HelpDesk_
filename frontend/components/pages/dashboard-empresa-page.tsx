@@ -13,70 +13,80 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-
-const stats = [
-  {
-    title: "Chamados Ativos",
-    value: "4",
-    description: "Sendo atendidos agora",
-    icon: ClipboardList,
-    color: "text-[#7ac142]",
-    bgColor: "bg-[#7ac142]/10",
-  },
-  {
-    title: "Equipamentos",
-    value: "25",
-    description: "Total em inventário",
-    icon: Monitor,
-    color: "text-[#3ba5d8]",
-    bgColor: "bg-[#3ba5d8]/10",
-  },
-  {
-    title: "Funcionários",
-    value: "18",
-    description: "Usuários cadastrados",
-    icon: Users,
-    color: "text-[#1a3a5c]",
-    bgColor: "bg-[#1a3a5c]/10",
-  },
-  {
-    title: "Chamados no Mês",
-    value: "12",
-    description: "Total de solicitações",
-    icon: Calendar,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-  },
-]
-
-const recentTickets = [
-  {
-    id: "#1234",
-    title: "Problema com impressora",
-    priority: "Alta",
-    status: "Aberto",
-    date: "13/03/2026",
-  },
-  {
-    id: "#1228",
-    title: "Solicitação de Acesso VPN",
-    priority: "Média",
-    status: "Resolvido",
-    date: "12/03/2026",
-  },
-]
+import { formatDateShort } from "@/lib/utils"
 
 export function DashboardEmpresaPage() {
   const [userData, setUserData] = useState<any>(null)
+  const [dynamicStats, setDynamicStats] = useState<any>(null)
+  const [recentTickets, setRecentTickets] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
-      setUserData(JSON.parse(storedUser))
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      
+      const empresaId = user.empresa?.id
+      if (empresaId) {
+        // Buscar estatísticas
+        fetch(`http://localhost:8000/stats/empresa/${empresaId}`)
+          .then(res => res.json())
+          .then(data => setDynamicStats(data))
+          .catch(err => console.error("Erro ao buscar estatísticas:", err))
+          
+        // Buscar chamados recentes
+        fetch(`http://localhost:8000/chamados/empresa/${empresaId}`)
+          .then(res => res.json())
+          .then(data => {
+            // Ordenar por data de abertura (mais recente primeiro) e pegar os 5 primeiros
+            const sorted = data.sort((a: any, b: any) => 
+              new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime()
+            ).slice(0, 5)
+            setRecentTickets(sorted)
+          })
+          .catch(err => console.error("Erro ao buscar chamados recentes:", err))
+          .finally(() => setLoading(false))
+      }
     }
   }, [])
 
   const empresa = userData?.empresa
+
+  const displayStats = [
+    {
+      title: "Chamados Ativos",
+      value: dynamicStats?.chamados_ativos?.toString() || "0",
+      description: "Sendo atendidos agora",
+      icon: ClipboardList,
+      color: "text-[#7ac142]",
+      bgColor: "bg-[#7ac142]/10",
+    },
+    {
+      title: "Equipamentos",
+      value: dynamicStats?.total_equipamentos?.toString() || "0",
+      description: "Total em inventário",
+      icon: Monitor,
+      color: "text-[#3ba5d8]",
+      bgColor: "bg-[#3ba5d8]/10",
+    },
+    {
+      title: "Funcionários",
+      value: dynamicStats?.total_funcionarios?.toString() || "0",
+      description: "Usuários cadastrados",
+      icon: Users,
+      color: "text-[#1a3a5c]",
+      bgColor: "bg-[#1a3a5c]/10",
+    },
+    {
+      title: "Chamados no Mês",
+      value: dynamicStats?.total_chamados?.toString() || "0",
+      description: "Total de solicitações",
+      icon: Calendar,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -86,7 +96,7 @@ export function DashboardEmpresaPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+        {displayStats.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -112,20 +122,26 @@ export function DashboardEmpresaPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-4 bg-white border rounded-xl hover:shadow-sm transition-shadow">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-semibold text-[#3ba5d8]">{ticket.id}</span>
-                    <span className="font-medium text-[#1a3a5c]">{ticket.title}</span>
-                    <span className="text-xs text-muted-foreground">Aberto em {ticket.date}</span>
+              {loading ? (
+                <p className="text-center py-4 text-muted-foreground">Carregando chamados...</p>
+              ) : recentTickets.length > 0 ? (
+                recentTickets.map((ticket) => (
+                  <div key={ticket.id} className="flex items-center justify-between p-4 bg-white border rounded-xl hover:shadow-sm transition-shadow">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-[#3ba5d8]">CH-{ticket.id.toString().padStart(3, '0')}</span>
+                      <span className="font-medium text-[#1a3a5c]">{ticket.titulo}</span>
+                      <span className="text-xs text-muted-foreground">Aberto em {formatDateShort(ticket.data_abertura)}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Badge className={ticket.status === "resolvido" || ticket.status === "fechado" ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}>
+                        {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Badge className={ticket.status === "Resolvido" ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}>
-                      {ticket.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center py-4 text-muted-foreground">Nenhum chamado encontrado.</p>
+              )}
             </div>
           </CardContent>
         </Card>
