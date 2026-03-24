@@ -16,6 +16,16 @@ import {
   Building2, User, Mail, Eye, Paperclip, History, MessageSquare, XCircle, 
   Search, Filter, Calendar, Clock, AlertTriangle, CheckCircle2 
 } from "lucide-react"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 
 
@@ -45,6 +55,27 @@ export function MeusChamadosPage() {
   const [modalAberto, setModalAberto] = useState(false)
   const [modalComentario, setModalComentario] = useState(false)
   const [novoComentario, setNovoComentario] = useState("")
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [chamadoParaCancelar, setChamadoParaCancelar] = useState<any | null>(null)
+  const [equipamentosById, setEquipamentosById] = useState<Record<string, { nome: string; patrimonio?: string }>>({})
+
+  const enviarComentario = () => {
+    if (!novoComentario.trim() || !chamadoSelecionado) return
+    const comentario = {
+      acao: novoComentario.trim(),
+      data: new Date().toISOString(),
+      usuario: userData?.nome || "Você",
+    }
+    const atualizado = { 
+      ...chamadoSelecionado, 
+      historico: [...(chamadoSelecionado.historico || []), comentario] 
+    }
+    setChamadoSelecionado(atualizado)
+    setChamados(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
+    setNovoComentario("")
+    setModalComentario(false)
+  }
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -59,6 +90,20 @@ export function MeusChamadosPage() {
           .then(data => setChamados(data))
           .catch(err => console.error("Erro ao buscar chamados:", err))
           .finally(() => setLoading(false))
+      }
+
+      const empresaId = user.empresa?.id
+      if (empresaId) {
+        fetch(`http://localhost:8000/equipamentos/${empresaId}`)
+          .then(res => res.json())
+          .then((data) => {
+            const map: Record<string, { nome: string; patrimonio?: string }> = {}
+            ;(data || []).forEach((e: any) => {
+              if (e?.id != null) map[String(e.id)] = { nome: e.nome, patrimonio: e.patrimonio }
+            })
+            setEquipamentosById(map)
+          })
+          .catch(() => setEquipamentosById({}))
       }
     }
   }, [])
@@ -82,6 +127,35 @@ export function MeusChamadosPage() {
     setModalComentario(true)
   }
 
+  const pedirCancelamento = (chamado: any) => {
+    setChamadoParaCancelar(chamado)
+    setCancelOpen(true)
+  }
+
+  const confirmarCancelamento = async () => {
+    if (!chamadoParaCancelar) return
+    setCancelLoading(true)
+    try {
+      const res = await fetch(`http://localhost:8000/chamados/${chamadoParaCancelar.id}/cancelar`, {
+        method: "PATCH"
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || "Falha ao cancelar chamado")
+      }
+      const atualizado = await res.json()
+      setChamados(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
+      if (chamadoSelecionado?.id === atualizado.id) setChamadoSelecionado(atualizado)
+      setCancelOpen(false)
+      setChamadoParaCancelar(null)
+    } catch (e) {
+      setCancelOpen(false)
+      setChamadoParaCancelar(null)
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -97,21 +171,27 @@ export function MeusChamadosPage() {
               <Building2 className="size-5 text-[#3ba5d8]" />
               <div>
                 <p className="text-xs text-muted-foreground">Empresa</p>
-                <p className="font-medium text-[#1a3a5c]">Tech Solutions Ltda</p>
+                <p className="font-medium text-[#1a3a5c]">
+                  {userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "Não disponível"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
               <User className="size-5 text-[#3ba5d8]" />
               <div>
                 <p className="text-xs text-muted-foreground">Usuário</p>
-                <p className="font-medium text-[#1a3a5c]">João Silva</p>
+                <p className="font-medium text-[#1a3a5c]">
+                  {userData?.nome || "Não disponível"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
               <Mail className="size-5 text-[#3ba5d8]" />
               <div>
                 <p className="text-xs text-muted-foreground">E-mail</p>
-                <p className="font-medium text-[#1a3a5c]">joao@techsolutions.com</p>
+                <p className="font-medium text-[#1a3a5c]">
+                  {userData?.email || "Não disponível"}
+                </p>
               </div>
             </div>
           </div>
@@ -232,13 +312,13 @@ export function MeusChamadosPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={prioridadeConfig[chamado.prioridade.toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
-                          {prioridadeConfig[chamado.prioridade.toLowerCase() as keyof typeof prioridadeConfig]?.label || chamado.prioridade}
+                        <Badge className={prioridadeConfig[String(chamado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
+                          {prioridadeConfig[String(chamado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.label || chamado.prioridade}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={statusConfig[chamado.status.toLowerCase() as keyof typeof statusConfig]?.cor}>
-                          {statusConfig[chamado.status.toLowerCase() as keyof typeof statusConfig]?.label || chamado.status}
+                        <Badge className={statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.cor}>
+                          {statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.label || chamado.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -249,14 +329,14 @@ export function MeusChamadosPage() {
                           <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(chamado)}>
                             <Eye className="size-4 text-[#3ba5d8]" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Ver anexos" disabled={!chamado.anexos || chamado.anexos.length === 0}>
+                          <Button variant="ghost" size="icon" title="Ver anexos" disabled={(chamado?.anexos?.length ?? 0) === 0}>
                             <Paperclip className="size-4 text-[#7ac142]" />
                           </Button>
                           <Button variant="ghost" size="icon" title="Comentar" onClick={() => abrirComentario(chamado)}>
                             <MessageSquare className="size-4 text-[#1a3a5c]" />
                           </Button>
                           {chamado.status !== "fechado" && chamado.status !== "resolvido" && (
-                            <Button variant="ghost" size="icon" title="Cancelar chamado">
+                            <Button variant="ghost" size="icon" title="Cancelar chamado" onClick={() => pedirCancelamento(chamado)}>
                               <XCircle className="size-4 text-red-500" />
                             </Button>
                           )}
@@ -293,7 +373,7 @@ export function MeusChamadosPage() {
             <Tabs defaultValue="detalhes">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-                <TabsTrigger value="anexos">Anexos ({chamadoSelecionado.anexos.length})</TabsTrigger>
+                <TabsTrigger value="anexos">Anexos ({chamadoSelecionado?.anexos?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="historico">Histórico</TabsTrigger>
               </TabsList>
               
@@ -307,24 +387,32 @@ export function MeusChamadosPage() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Prioridade</p>
-                    <Badge className={prioridadeConfig[chamadoSelecionado.prioridade as keyof typeof prioridadeConfig].cor}>
-                      {prioridadeConfig[chamadoSelecionado.prioridade as keyof typeof prioridadeConfig].label}
+                    <Badge className={prioridadeConfig[String(chamadoSelecionado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
+                      {prioridadeConfig[String(chamadoSelecionado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.label || chamadoSelecionado.prioridade}
                     </Badge>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge className={statusConfig[chamadoSelecionado.status as keyof typeof statusConfig].cor}>
-                      {statusConfig[chamadoSelecionado.status as keyof typeof statusConfig].label}
+                    <Badge className={statusConfig[String(chamadoSelecionado.status).toLowerCase() as keyof typeof statusConfig]?.cor}>
+                      {statusConfig[String(chamadoSelecionado.status).toLowerCase() as keyof typeof statusConfig]?.label || chamadoSelecionado.status}
                     </Badge>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Data de Abertura</p>
-                    <p className="text-sm font-medium">{chamadoSelecionado.dataAbertura}</p>
+                    <p className="text-sm font-medium">{formatDate(chamadoSelecionado.data_abertura ?? chamadoSelecionado.dataAbertura)}</p>
                   </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Equipamento</p>
-                  <p className="text-sm font-medium">{chamadoSelecionado.equipamento}</p>
+                  <p className="text-sm font-medium">
+                    {(() => {
+                      const id = chamadoSelecionado.equipamento_id ?? chamadoSelecionado.equipamentoId ?? null
+                      if (!id) return "Não informado"
+                      const eq = equipamentosById[String(id)]
+                      if (eq) return `${eq.nome}${eq.patrimonio ? ` (${eq.patrimonio})` : ""}`
+                      return `ID ${id}`
+                    })()}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Descrição</p>
@@ -333,9 +421,9 @@ export function MeusChamadosPage() {
               </TabsContent>
               
               <TabsContent value="anexos" className="mt-4">
-                {chamadoSelecionado.anexos.length > 0 ? (
+                {(chamadoSelecionado?.anexos?.length ?? 0) > 0 ? (
                   <div className="space-y-2">
-                    {chamadoSelecionado.anexos.map((anexo, index) => (
+                    {(chamadoSelecionado?.anexos ?? []).map((anexo, index) => (
                       <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                         <Paperclip className="size-4 text-[#3ba5d8]" />
                         <span className="text-sm">{anexo}</span>
@@ -354,7 +442,7 @@ export function MeusChamadosPage() {
               
               <TabsContent value="historico" className="mt-4">
                 <div className="space-y-3">
-                  {chamadoSelecionado.historico.map((item, index) => (
+                  {(chamadoSelecionado?.historico ?? []).map((item, index) => (
                     <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                       <div className="flex-shrink-0">
                         <div className="size-8 rounded-full bg-[#3ba5d8]/20 flex items-center justify-center">
@@ -399,12 +487,33 @@ export function MeusChamadosPage() {
             <Button variant="outline" onClick={() => setModalComentario(false)}>
               Cancelar
             </Button>
-            <Button className="bg-[#7ac142] hover:bg-[#6ab035]">
+            <Button 
+              className="bg-[#7ac142] hover:bg-[#6ab035]" 
+              onClick={enviarComentario}
+              disabled={!novoComentario.trim()}
+            >
               Enviar Comentário
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#1a3a5c]">Cancelar chamado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja realmente cancelar o chamado {chamadoParaCancelar ? `CH-${String(chamadoParaCancelar.id).padStart(3,"0")}` : ""}? Esta ação fechará o chamado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelLoading}>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarCancelamento} disabled={cancelLoading}>
+              {cancelLoading ? "Cancelando..." : "Confirmar cancelamento"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

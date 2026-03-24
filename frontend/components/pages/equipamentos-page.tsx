@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,6 +30,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Search, RotateCcw, Info, Plus } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // Dados mock de equipamentos
 const equipamentosMock = [
@@ -151,6 +152,99 @@ export function EquipamentosPage() {
     localizacao: "",
   })
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<typeof equipamentosMock[0] | null>(null)
+  const [userData, setUserData] = useState<any>(null)
+  const [equipamentos, setEquipamentos] = useState<any[]>([])
+  const [openNovo, setOpenNovo] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    nome: "",
+    patrimonio: "",
+    tipo: "",
+    marca: "",
+    modelo: "",
+    numero_serie: "",
+  })
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user")
+    if (stored) {
+      const u = JSON.parse(stored)
+      setUserData(u)
+      if (u?.empresa?.id) {
+        fetch(`http://localhost:8000/equipamentos/${u.empresa.id}`)
+          .then(r => r.json())
+          .then(data => setEquipamentos(data))
+          .catch(() => setEquipamentos([]))
+      }
+    }
+  }, [])
+
+  const lista = (equipamentos?.length ?? 0) > 0
+    ? equipamentos.map((e: any) => ({
+        id: e.id?.toString(),
+        patrimonio: e.patrimonio,
+        empresa: userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "",
+        tipo: e.tipo || "",
+        marca: e.marca || "",
+        modelo: e.modelo || "",
+        numSerie: e.numero_serie || "",
+        localizacao: "",
+        status: e.status || "ativo",
+        chamadosVinculados: 0,
+        ultimaManutencao: "",
+        ip: "",
+        so: "",
+        mac: "",
+        dataAquisicao: "",
+        garantiaInicio: "",
+        garantiaFim: "",
+      }))
+    : equipamentosMock
+
+  const cadastrarEquipamento = async () => {
+    if (!userData?.empresa?.id) {
+      toast({ title: "Empresa não identificada", description: "Faça login novamente.", variant: "destructive" as any })
+      return
+    }
+    if (!form.nome || !form.patrimonio) {
+      toast({ title: "Campos obrigatórios", description: "Informe Nome e Patrimônio.", variant: "destructive" as any })
+      return
+    }
+    try {
+      setSaving(true)
+      const res = await fetch("http://localhost:8000/equipamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empresa_id: userData.empresa.id,
+          nome: form.nome,
+          patrimonio: form.patrimonio,
+          tipo: form.tipo || null,
+          marca: form.marca || null,
+          modelo: form.modelo || null,
+          numero_serie: form.numero_serie || null,
+          status: "ativo",
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || "Falha ao cadastrar equipamento")
+      }
+      const novo = await res.json()
+      setOpenNovo(false)
+      setForm({ nome: "", patrimonio: "", tipo: "", marca: "", modelo: "", numero_serie: "" })
+      toast({ title: "Equipamento cadastrado", description: `Patrimônio ${novo.patrimonio}` })
+      // Recarregar lista
+      const r = await fetch(`http://localhost:8000/equipamentos/${userData.empresa.id}`)
+      const data = await r.json()
+      setEquipamentos(data)
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message || "Erro ao cadastrar equipamento.", variant: "destructive" as any })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const limparFiltros = () => {
     setFiltros({
@@ -169,10 +263,52 @@ export function EquipamentosPage() {
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Equipamentos</h1>
           <p className="text-muted-foreground">Gerencie todos os equipamentos cadastrados</p>
         </div>
-        <Button className="bg-[#7ac142] hover:bg-[#6ab032] gap-2">
-          <Plus className="size-4" />
-          Adicionar Equipamento
-        </Button>
+        <Dialog open={openNovo} onOpenChange={setOpenNovo}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#7ac142] hover:bg-[#6ab032] gap-2">
+              <Plus className="size-4" />
+              Adicionar Equipamento
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-[#1a3a5c]">Cadastrar Equipamento</DialogTitle>
+              <DialogDescription>Informe os dados do equipamento</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-2">
+              <div className="space-y-1">
+                <Label>Nome</Label>
+                <Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Notebook Dell Latitude" />
+              </div>
+              <div className="space-y-1">
+                <Label>Patrimônio</Label>
+                <Input value={form.patrimonio} onChange={e => setForm({ ...form, patrimonio: e.target.value })} placeholder="Ex: NB-001" />
+              </div>
+              <div className="space-y-1">
+                <Label>Tipo</Label>
+                <Input value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })} placeholder="Notebook, Desktop..." />
+              </div>
+              <div className="space-y-1">
+                <Label>Marca</Label>
+                <Input value={form.marca} onChange={e => setForm({ ...form, marca: e.target.value })} placeholder="Dell, HP..." />
+              </div>
+              <div className="space-y-1">
+                <Label>Modelo</Label>
+                <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} placeholder="Latitude 3420" />
+              </div>
+              <div className="space-y-1">
+                <Label>Número de Série</Label>
+                <Input value={form.numero_serie} onChange={e => setForm({ ...form, numero_serie: e.target.value })} placeholder="ABC123XYZ" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpenNovo(false)}>Cancelar</Button>
+              <Button className="bg-[#1a3a5c]" onClick={cadastrarEquipamento} disabled={saving}>
+                {saving ? "Cadastrando..." : "Cadastrar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filtros */}
@@ -272,7 +408,7 @@ export function EquipamentosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {equipamentosMock.map((equipamento) => (
+              {lista.map((equipamento) => (
                 <TableRow key={equipamento.id} className="hover:bg-[#3ba5d8]/5">
                   <TableCell className="font-medium text-[#1a3a5c]">{equipamento.patrimonio}</TableCell>
                   <TableCell>{equipamento.empresa}</TableCell>

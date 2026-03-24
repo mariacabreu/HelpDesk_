@@ -8,7 +8,14 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(dateString: string | Date | null | undefined) {
   if (!dateString) return "N/A"
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+    let date: Date
+    if (typeof dateString === 'string') {
+      const s = dateString.trim()
+      const needsUtc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)
+      date = new Date(needsUtc ? `${s}Z` : s)
+    } else {
+      date = dateString
+    }
     if (isNaN(date.getTime())) return String(dateString)
     
     return new Intl.DateTimeFormat('pt-BR', {
@@ -26,7 +33,14 @@ export function formatDate(dateString: string | Date | null | undefined) {
 export function formatDateShort(dateString: string | Date | null | undefined) {
   if (!dateString) return "N/A"
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+    let date: Date
+    if (typeof dateString === 'string') {
+      const s = dateString.trim()
+      const needsUtc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)
+      date = new Date(needsUtc ? `${s}Z` : s)
+    } else {
+      date = dateString
+    }
     if (isNaN(date.getTime())) return String(dateString)
     
     return new Intl.DateTimeFormat('pt-BR', {

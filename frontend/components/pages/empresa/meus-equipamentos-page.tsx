@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 
 
@@ -38,6 +39,16 @@ export function MeusEquipamentosPage() {
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [cadastro, setCadastro] = useState({
+    nome: "",
+    tipo: "",
+    patrimonio: "",
+    marca: "",
+    modelo: "",
+    numero_serie: "",
+  })
+  const { toast } = useToast()
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -67,6 +78,49 @@ export function MeusEquipamentosPage() {
   const abrirDetalhes = (equipamento: any) => {
     setEquipamentoSelecionado(equipamento)
     setModalDetalhes(true)
+  }
+
+  const cadastrarEquipamento = async () => {
+    if (!userData?.empresa?.id) {
+      toast({ title: "Empresa não identificada", description: "Faça login novamente.", variant: "destructive" as any })
+      return
+    }
+    if (!cadastro.nome.trim() || !cadastro.patrimonio.trim()) {
+      toast({ title: "Campos obrigatórios", description: "Informe Nome e Patrimônio.", variant: "destructive" as any })
+      return
+    }
+    try {
+      setSaving(true)
+      const res = await fetch("http://localhost:8000/equipamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empresa_id: userData.empresa.id,
+          nome: cadastro.nome.trim(),
+          patrimonio: cadastro.patrimonio.trim(),
+          tipo: cadastro.tipo || null,
+          marca: cadastro.marca.trim() || null,
+          modelo: cadastro.modelo.trim() || null,
+          numero_serie: cadastro.numero_serie.trim() || null,
+          status: "ativo",
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || "Falha ao cadastrar equipamento")
+      }
+      const novo = await res.json()
+      toast({ title: "Equipamento cadastrado", description: `Patrimônio ${novo.patrimonio}` })
+      setModalCadastro(false)
+      setCadastro({ nome: "", tipo: "", patrimonio: "", marca: "", modelo: "", numero_serie: "" })
+      const r = await fetch(`http://localhost:8000/equipamentos/${userData.empresa.id}`)
+      const data = await r.json()
+      setEquipamentos(data)
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message || "Erro ao cadastrar equipamento.", variant: "destructive" as any })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -106,7 +160,7 @@ export function MeusEquipamentosPage() {
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <Select value={filtroTipo} onValueChange={(v) => setFiltroTipo(v === "todos" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -122,7 +176,7 @@ export function MeusEquipamentosPage() {
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v === "todos" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -175,8 +229,8 @@ export function MeusEquipamentosPage() {
                   </TableRow>
                 ) : equipamentosFiltrados.length > 0 ? (
                   equipamentosFiltrados.map((eq) => {
-                    const Icon = tipoIcon[eq.tipo.toLowerCase() as keyof typeof tipoIcon] || Monitor
-                    const config = statusConfig[eq.status.toLowerCase() as keyof typeof statusConfig]
+                    const Icon = tipoIcon[String(eq.tipo || "").toLowerCase() as keyof typeof tipoIcon] || Monitor
+                    const config = statusConfig[String(eq.status || "").toLowerCase() as keyof typeof statusConfig]
                     return (
                       <TableRow key={eq.id}>
                         <TableCell className="font-mono text-sm">{eq.id}</TableCell>
@@ -249,7 +303,7 @@ export function MeusEquipamentosPage() {
             <Tabs defaultValue="detalhes">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="detalhes">Especificações</TabsTrigger>
-                <TabsTrigger value="chamados">Histórico de Chamados ({equipamentoSelecionado.chamados})</TabsTrigger>
+                <TabsTrigger value="chamados">Histórico de Chamados ({equipamentoSelecionado.chamados_count || equipamentoSelecionado.chamados || 0})</TabsTrigger>
               </TabsList>
               
               <TabsContent value="detalhes" className="space-y-4 mt-4">
@@ -277,7 +331,7 @@ export function MeusEquipamentosPage() {
                 <div className="border-t pt-4">
                   <p className="text-sm font-medium mb-3">Especificações Técnicas</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(equipamentoSelecionado.especificacoes).map(([key, value]) => (
+                    {Object.entries(equipamentoSelecionado.especificacoes || {}).map(([key, value]) => (
                       <div key={key} className="p-2 bg-gray-50 rounded">
                         <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                         <p className="text-sm font-medium">{value}</p>
@@ -288,9 +342,9 @@ export function MeusEquipamentosPage() {
               </TabsContent>
               
               <TabsContent value="chamados" className="mt-4">
-                {equipamentoSelecionado.historicoChamados.length > 0 ? (
+                {(equipamentoSelecionado.historicoChamados || []).length > 0 ? (
                   <div className="space-y-2">
-                    {equipamentoSelecionado.historicoChamados.map((chamado) => (
+                    {(equipamentoSelecionado.historicoChamados || []).map((chamado) => (
                       <div key={chamado.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium text-sm">{chamado.id} - {chamado.titulo}</p>
@@ -324,12 +378,17 @@ export function MeusEquipamentosPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="nome-eq">Nome do Equipamento</Label>
-              <Input id="nome-eq" placeholder="Ex: Notebook Dell Latitude" />
+              <Input
+                id="nome-eq"
+                placeholder="Ex: Notebook Dell Latitude"
+                value={cadastro.nome}
+                onChange={(e) => setCadastro({ ...cadastro, nome: e.target.value })}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo</Label>
-                <Select>
+                <Select value={cadastro.tipo} onValueChange={(v) => setCadastro({ ...cadastro, tipo: v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -344,27 +403,50 @@ export function MeusEquipamentosPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="patrimonio">Patrimônio</Label>
-                <Input id="patrimonio" placeholder="Ex: NB-2024-006" />
+                <Input
+                  id="patrimonio"
+                  placeholder="Ex: NB-2024-006"
+                  value={cadastro.patrimonio}
+                  onChange={(e) => setCadastro({ ...cadastro, patrimonio: e.target.value })}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="marca">Marca</Label>
-                <Input id="marca" placeholder="Ex: Dell" />
+                <Input
+                  id="marca"
+                  placeholder="Ex: Dell"
+                  value={cadastro.marca}
+                  onChange={(e) => setCadastro({ ...cadastro, marca: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="modelo">Modelo</Label>
-                <Input id="modelo" placeholder="Ex: Latitude 5520" />
+                <Input
+                  id="modelo"
+                  placeholder="Ex: Latitude 5520"
+                  value={cadastro.modelo}
+                  onChange={(e) => setCadastro({ ...cadastro, modelo: e.target.value })}
+                />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Número de Série</Label>
+              <Input
+                placeholder="Ex: ABC123XYZ"
+                value={cadastro.numero_serie}
+                onChange={(e) => setCadastro({ ...cadastro, numero_serie: e.target.value })}
+              />
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalCadastro(false)}>
+            <Button variant="outline" onClick={() => setModalCadastro(false)} disabled={saving}>
               Cancelar
             </Button>
-            <Button className="bg-[#7ac142] hover:bg-[#6ab035]">
-              Cadastrar
+            <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={cadastrarEquipamento} disabled={saving}>
+              {saving ? "Cadastrando..." : "Cadastrar"}
             </Button>
           </DialogFooter>
         </DialogContent>

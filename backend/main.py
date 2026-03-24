@@ -4,7 +4,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento
+from datetime import datetime
 
 app = FastAPI()
 
@@ -64,6 +65,16 @@ class EmpresaCreate(BaseModel):
     # Dados de Login
     login: str
     senha: str
+
+class EquipamentoCreate(BaseModel):
+    empresa_id: int
+    nome: str
+    patrimonio: str
+    tipo: str | None = None
+    marca: str | None = None
+    modelo: str | None = None
+    numero_serie: str | None = None
+    status: str | None = "ativo"
 
 @app.post("/empresas")
 def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
@@ -199,8 +210,32 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
 
 @app.get("/equipamentos/{empresa_id}")
 def get_equipamentos(empresa_id: int, db: Session = Depends(get_db)):
-    from database import Equipamento
     return db.query(Equipamento).filter(Equipamento.empresa_id == empresa_id).all()
+
+@app.post("/equipamentos")
+def create_equipamento(e: EquipamentoCreate, db: Session = Depends(get_db)):
+    # patrimônio único
+    existing = db.query(Equipamento).filter(Equipamento.patrimonio == e.patrimonio).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Patrimônio já cadastrado")
+    try:
+        novo = Equipamento(
+            empresa_id=e.empresa_id,
+            nome=e.nome,
+            patrimonio=e.patrimonio,
+            tipo=e.tipo,
+            marca=e.marca,
+            modelo=e.modelo,
+            numero_serie=e.numero_serie,
+            status=e.status or "ativo",
+        )
+        db.add(novo)
+        db.commit()
+        db.refresh(novo)
+        return novo
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar equipamento: {str(ex)}")
 
 @app.get("/chamados/empresa/{empresa_id}")
 def get_chamados_empresa(empresa_id: int, db: Session = Depends(get_db)):
@@ -233,6 +268,19 @@ def get_stats_empresa(empresa_id: int, db: Session = Depends(get_db)):
         "total_funcionarios": total_funcionarios,
         "total_chamados": total_chamados
     }
+
+@app.patch("/chamados/{chamado_id}/cancelar")
+def cancelar_chamado(chamado_id: int, db: Session = Depends(get_db)):
+    chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
+    if not chamado:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado")
+    if chamado.status in [StatusChamado.FECHADO, StatusChamado.RESOLVIDO]:
+        return chamado
+    chamado.status = StatusChamado.FECHADO
+    chamado.data_fechamento = datetime.utcnow()
+    db.commit()
+    db.refresh(chamado)
+    return chamado
 
 if __name__ == "__main__":
     import uvicorn

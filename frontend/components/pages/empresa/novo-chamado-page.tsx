@@ -10,6 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Building2, User, Mail, Upload, Clock, AlertTriangle, X, Loader2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const slaInfo = {
   baixa: { tempo: "48 horas", cor: "bg-green-100 text-green-800" },
@@ -31,6 +41,8 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
   const [equipamentoId, setEquipamentoId] = useState("")
   const [arquivos, setArquivos] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
+  const [successOpen, setSuccessOpen] = useState(false)
+  const [novoChamadoId, setNovoChamadoId] = useState<number | null>(null)
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -107,11 +119,10 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
         throw new Error(errorMessage)
       }
 
-      alert("Chamado aberto com sucesso!")
+      const data = await response.json()
+      setNovoChamadoId(data?.id ?? null)
+      setSuccessOpen(true)
       limparFormulario()
-      if (onTicketCreated) {
-        onTicketCreated()
-      }
     } catch (err: any) {
       console.error("Erro:", err)
       alert(err.message || "Ocorreu um erro ao tentar abrir o chamado.")
@@ -348,6 +359,28 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
           </Button>
         </div>
       </form>
+      
+      <AlertDialog open={successOpen} onOpenChange={setSuccessOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#1a3a5c]">Chamado aberto com sucesso</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seu chamado {novoChamadoId ? `CH-${String(novoChamadoId).padStart(3, "0")}` : ""} foi registrado e já está na fila de atendimento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSuccessOpen(false)}>Fechar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setSuccessOpen(false)
+                if (onTicketCreated) onTicketCreated()
+              }}
+            >
+              Ver meus chamados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
