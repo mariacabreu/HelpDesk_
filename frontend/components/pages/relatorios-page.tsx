@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   XCircle
 } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 export function RelatoriosPage() {
   const [periodo, setPeriodo] = useState({ inicio: "", fim: "" })
@@ -80,6 +82,95 @@ export function RelatoriosPage() {
     { data: "2024-01-15 14:00", usuario: "pedro.costa", acao: "Login no sistema", ip: "192.168.1.55" },
   ]
 
+  const exportarRelatorioGeral = () => {
+    const doc = new jsPDF()
+    let y = 15
+
+    doc.setFontSize(18)
+    doc.text("Relatório Geral de Gestão - HelpDesk", 14, y)
+    y += 10
+    doc.setFontSize(10)
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, y)
+    y += 5
+    doc.text(`Período: ${periodo.inicio || 'Início'} até ${periodo.fim || 'Fim'}`, 14, y)
+    y += 15
+
+    // Seção Chamados
+    doc.setFontSize(14)
+    doc.text("1. Resumo de Chamados", 14, y)
+    y += 10
+    autoTable(doc, {
+      startY: y,
+      head: [["Status", "Quantidade"]],
+      body: [
+        ["Total", estatisticasChamados.total.toString()],
+        ["Abertos", estatisticasChamados.abertos.toString()],
+        ["Em Andamento", estatisticasChamados.emAndamento.toString()],
+        ["Resolvidos", estatisticasChamados.resolvidos.toString()]
+      ],
+      headStyles: { fillColor: [26, 58, 92] }
+    })
+    y = (doc as any).lastAutoTable.finalY + 15
+
+    // Seção Prioridades
+    doc.setFontSize(14)
+    doc.text("2. Chamados por Prioridade", 14, y)
+    y += 10
+    autoTable(doc, {
+      startY: y,
+      head: [["Prioridade", "Quantidade"]],
+      body: [
+        ["Baixa", estatisticasChamados.porPrioridade.baixa.toString()],
+        ["Média", estatisticasChamados.porPrioridade.media.toString()],
+        ["Alta", estatisticasChamados.porPrioridade.alta.toString()],
+        ["Crítica", estatisticasChamados.porPrioridade.critica.toString()]
+      ],
+      headStyles: { fillColor: [26, 58, 92] }
+    })
+    y = (doc as any).lastAutoTable.finalY + 15
+
+    // Seção SLA
+    doc.setFontSize(14)
+    doc.text("3. Desempenho SLA", 14, y)
+    y += 10
+    autoTable(doc, {
+      startY: y,
+      head: [["Métrica", "Valor"]],
+      body: [
+        ["Dentro do SLA", estatisticasSLA.dentroSLA.toString()],
+        ["Fora do SLA", estatisticasSLA.foraSLA.toString()],
+        ["Tempo Médio de Atendimento", estatisticasSLA.tempoMedio]
+      ],
+      headStyles: { fillColor: [26, 58, 92] }
+    })
+
+    doc.save(`relatorio-geral-${new Date().getTime()}.pdf`)
+  }
+
+  const exportarLogsAuditoria = () => {
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text("Logs de Auditoria do Sistema", 14, 15)
+    doc.setFontSize(10)
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22)
+
+    const tableData = logsAuditoria.map(log => [
+      log.data,
+      log.usuario,
+      log.acao,
+      log.ip
+    ])
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["Data/Hora", "Usuário", "Ação", "IP"]],
+      body: tableData,
+      headStyles: { fillColor: [26, 58, 92] }
+    })
+
+    doc.save(`logs-auditoria-${new Date().getTime()}.pdf`)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -88,7 +179,7 @@ export function RelatoriosPage() {
           <p className="text-muted-foreground">Visualize metricas e estatisticas do sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={exportarRelatorioGeral}>
             <FileText className="size-4" />
             Exportar PDF
           </Button>
@@ -367,7 +458,7 @@ export function RelatoriosPage() {
               <Shield className="size-5 text-[#1a3a5c]" />
               <CardTitle>Auditoria</CardTitle>
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 bg-white border-gray-200 shadow-sm hover:bg-gray-50 transition-all" onClick={exportarLogsAuditoria}>
               <Download className="size-4" />
               Exportar Logs
             </Button>

@@ -77,7 +77,20 @@ export function EmployeeForm({ onBack }: EmployeeFormProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="departamento">Departamento</Label>
-                <Input id="departamento" placeholder="Digite o departamento" required />
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="QA / Testes">QA / Testes</SelectItem>
+                    <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
+                    <SelectItem value="Backup">Backup</SelectItem>
+                    <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
+                    <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
+                    <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

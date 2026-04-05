@@ -29,7 +29,11 @@ const statusConfig = {
   inativo: { label: "Inativo", cor: "bg-red-100 text-red-800" },
 }
 
-export function MeusEquipamentosPage() {
+interface MeusEquipamentosPageProps {
+  onOpenTicket?: () => void
+}
+
+export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps) {
   const [userData, setUserData] = useState<any>(null)
   const [equipamentos, setEquipamentos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,6 +43,7 @@ export function MeusEquipamentosPage() {
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
+  const [modalEditar, setModalEditar] = useState(false)
   const [saving, setSaving] = useState(false)
   const [cadastro, setCadastro] = useState({
     nome: "",
@@ -48,9 +53,19 @@ export function MeusEquipamentosPage() {
     modelo: "",
     numero_serie: "",
   })
+  const [editForm, setEditForm] = useState({
+    id: null,
+    nome: "",
+    tipo: "",
+    patrimonio: "",
+    marca: "",
+    modelo: "",
+    numero_serie: "",
+    status: "",
+  })
   const { toast } = useToast()
 
-  useEffect(() => {
+  const fetchEquipamentos = async () => {
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
       const user = JSON.parse(storedUser)
@@ -58,14 +73,84 @@ export function MeusEquipamentosPage() {
       
       const empresaId = user.empresa?.id
       if (empresaId) {
-        fetch(`/api/equipamentos/${empresaId}`)
-          .then(res => res.json())
-          .then(data => setEquipamentos(data))
-          .catch(err => console.error("Erro ao buscar equipamentos:", err))
-          .finally(() => setLoading(false))
+        try {
+          const res = await fetch(`/api/equipamentos/${empresaId}`)
+          const data = await res.json()
+          setEquipamentos(data)
+        } catch (err) {
+          console.error("Erro ao buscar equipamentos:", err)
+        } finally {
+          setLoading(false)
+        }
       }
     }
+  }
+
+  useEffect(() => {
+    fetchEquipamentos()
   }, [])
+
+  const handleOpenTicket = (eqId: number) => {
+    localStorage.setItem("pendingEquipmentId", eqId.toString())
+    if (onOpenTicket) onOpenTicket()
+  }
+
+  const handleEditar = (eq: any) => {
+    setEditForm({
+      id: eq.id,
+      nome: eq.nome || "",
+      tipo: eq.tipo || "",
+      patrimonio: eq.patrimonio || "",
+      marca: eq.marca || "",
+      modelo: eq.modelo || "",
+      numero_serie: eq.numero_serie || "",
+      status: eq.status || "ativo",
+    })
+    setModalEditar(true)
+  }
+
+  const salvarEdicao = async () => {
+    if (!editForm.nome.trim() || !editForm.patrimonio.trim()) {
+      toast({ title: "Erro", description: "Nome e Patrimônio são obrigatórios", variant: "destructive" as any })
+      return
+    }
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/equipamentos/${editForm.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      })
+
+      if (!res.ok) throw new Error("Erro ao atualizar equipamento")
+
+      toast({ title: "Sucesso", description: "Equipamento atualizado com sucesso!" })
+      setModalEditar(false)
+      fetchEquipamentos()
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" as any })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExcluir = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir permanentemente este equipamento?")) return
+
+    try {
+      const res = await fetch(`/api/equipamentos/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) throw new Error("Erro ao excluir equipamento")
+
+      toast({ title: "Sucesso", description: "Equipamento excluído permanentemente." })
+      fetchEquipamentos()
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" as any })
+    }
+  }
 
   const equipamentosFiltrados = equipamentos.filter(eq => {
     if (filtroTipo && eq.tipo !== filtroTipo) return false
@@ -254,21 +339,43 @@ export function MeusEquipamentosPage() {
                           {eq.chamados_count || eq.chamados || 0}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(eq)}>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                              title="Visualizar" 
+                              onClick={() => abrirDetalhes(eq)}
+                            >
                               <Eye className="size-4 text-[#3ba5d8]" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Abrir Chamado">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-green-50 hover:border-[#7ac142]/50 transition-all hover:scale-110"
+                              title="Abrir Chamado"
+                              onClick={() => handleOpenTicket(eq.id)}
+                            >
                               <ClipboardList className="size-4 text-[#7ac142]" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Editar">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#1a3a5c]/30 transition-all hover:scale-110"
+                              title="Editar"
+                              onClick={() => handleEditar(eq)}
+                            >
                               <Pencil className="size-4 text-[#1a3a5c]" />
                             </Button>
-                            {eq.status !== "inativo" && (
-                              <Button variant="ghost" size="icon" title="Inativar">
-                                <XCircle className="size-4 text-red-500" />
-                              </Button>
-                            )}
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
+                              title="Excluir"
+                              onClick={() => handleExcluir(eq.id)}
+                            >
+                              <XCircle className="size-4 text-red-500" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -447,6 +554,103 @@ export function MeusEquipamentosPage() {
             </Button>
             <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={cadastrarEquipamento} disabled={saving}>
               {saving ? "Cadastrando..." : "Cadastrar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar */}
+      <Dialog open={modalEditar} onOpenChange={setModalEditar}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-[#1a3a5c]">Editar Equipamento</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do equipamento
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-nome">Nome do Equipamento</Label>
+              <Input
+                id="edit-nome"
+                value={editForm.nome}
+                onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={editForm.tipo} onValueChange={(v) => setEditForm({ ...editForm, tipo: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="notebook">Notebook</SelectItem>
+                    <SelectItem value="desktop">Desktop</SelectItem>
+                    <SelectItem value="impressora">Impressora</SelectItem>
+                    <SelectItem value="monitor">Monitor</SelectItem>
+                    <SelectItem value="servidor">Servidor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-patrimonio">Patrimônio</Label>
+                <Input
+                  id="edit-patrimonio"
+                  value={editForm.patrimonio}
+                  onChange={(e) => setEditForm({ ...editForm, patrimonio: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-marca">Marca</Label>
+                <Input
+                  id="edit-marca"
+                  value={editForm.marca}
+                  onChange={(e) => setEditForm({ ...editForm, marca: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-modelo">Modelo</Label>
+                <Input
+                  id="edit-modelo"
+                  value={editForm.modelo}
+                  onChange={(e) => setEditForm({ ...editForm, modelo: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Número de Série</Label>
+                <Input
+                  value={editForm.numero_serie}
+                  onChange={(e) => setEditForm({ ...editForm, numero_serie: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="manutencao">Manutenção</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalEditar(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button className="bg-[#1a3a5c] hover:bg-[#1a3a5c]/90" onClick={salvarEdicao} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>

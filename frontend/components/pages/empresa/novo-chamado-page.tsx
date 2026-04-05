@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { Building2, User, Mail, Upload, Clock, AlertTriangle, X, Loader2 } from "lucide-react"
+import { Building2, User, Mail, Upload, Clock, AlertTriangle, X, Loader2, Shuffle, UserCog } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,8 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
   const [loading, setLoading] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
   const [novoChamadoId, setNovoChamadoId] = useState<number | null>(null)
+  const [funcionariosNivel, setFuncionariosNivel] = useState<any[]>([])
+  const [funcionarioSelecionadoId, setFuncionarioSelecionadoId] = useState("-1")
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -56,9 +58,29 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
           .then(res => res.json())
           .then(data => setEquipamentos(data))
           .catch(err => console.error("Erro ao buscar equipamentos:", err))
+        
+        // Buscar todos os funcionários da empresa para filtrar por nível depois
+        fetch(`/api/funcionarios/empresa/${user.empresa.id}`)
+          .then(res => res.json())
+          .then(data => setFuncionariosNivel(data))
+          .catch(err => console.error("Erro ao buscar funcionários:", err))
+
+        // Verificar se há um equipamento pendente para seleção automática
+        const pendingEqId = localStorage.getItem("pendingEquipmentId")
+        if (pendingEqId) {
+          setEquipamentoId(pendingEqId)
+          localStorage.removeItem("pendingEquipmentId") // Limpar após usar
+        }
       }
     }
   }, [])
+
+  // Filtrar funcionários baseados na prioridade (N1, N2, N3)
+  const suportesFiltrados = funcionariosNivel.filter(f => {
+    if (!prioridade) return false
+    const nivelMap: Record<string, string> = { baixa: "n1", media: "n2", alta: "n3" }
+    return f.nivel === nivelMap[prioridade] && f.status === "ativo"
+  })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -89,6 +111,7 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
         empresa_id: parseInt(userData.empresa.id),
         solicitante_id: parseInt(userData.id),
         equipamento_id: equipamentoId === "nao-aplica" || !equipamentoId ? null : (parseInt(equipamentoId) || null),
+        atribuido_a_id: parseInt(funcionarioSelecionadoId) || -1,
         titulo,
         descricao,
         tipo: tipoChamado,
@@ -203,7 +226,14 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
 
             <div className="space-y-2">
               <Label>Prioridade</Label>
-              <RadioGroup value={prioridade} onValueChange={setPrioridade} className="flex gap-4">
+              <RadioGroup 
+                value={prioridade} 
+                onValueChange={(val) => {
+                  setPrioridade(val)
+                  setFuncionarioSelecionadoId("-1") // Resetar para automático ao mudar prioridade
+                }} 
+                className="flex gap-4"
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="baixa" id="baixa" />
                   <Label htmlFor="baixa" className="font-normal cursor-pointer">
@@ -224,6 +254,77 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
                 </div>
               </RadioGroup>
             </div>
+
+            {/* Atribuição Simplificada como Botão Funcional */}
+            {prioridade && (
+              <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Select 
+                  value={funcionarioSelecionadoId} 
+                  onValueChange={setFuncionarioSelecionadoId}
+                >
+                  <SelectTrigger className="w-full h-12 border-[#3ba5d8]/30 focus:ring-[#3ba5d8]/20 bg-white hover:bg-gray-50 flex items-center gap-3 shadow-sm transition-all border-l-4 border-l-[#3ba5d8]">
+                    <User className="size-5 text-[#3ba5d8] shrink-0" />
+                    <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                      <span className="font-bold text-[#1a3a5c] whitespace-nowrap">Responsável:</span>
+                      <SelectValue placeholder="Escolha um técnico ou automático" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="-1" className="cursor-pointer py-3 border-b border-gray-100 font-semibold text-[#3ba5d8]">
+                      <div className="flex items-center gap-2">
+                        <Shuffle className="size-4" />
+                        Escolha Automática Aleatória (Sistema)
+                      </div>
+                    </SelectItem>
+                    {suportesFiltrados.length > 0 ? (
+                      suportesFiltrados.map((f) => (
+                        <SelectItem key={f.id} value={f.id.toString()} className="cursor-pointer py-3 border-b last:border-0 border-gray-100">
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#1a3a5c]">{f.nome}</span>
+                              <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-[#3ba5d8]/5 text-[#3ba5d8] border-[#3ba5d8]/20">
+                                {f.setor || "Suporte"}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">Nível {f.nivel?.toUpperCase()} • {f.email || "E-mail não cadastrado"}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="nenhum" disabled className="py-4 text-center text-muted-foreground">
+                        Nenhum técnico {prioridade.toUpperCase()} disponível no momento
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {/* Informações detalhadas do técnico selecionado (gerar informações) */}
+                {funcionarioSelecionadoId !== "-1" && funcionarioSelecionadoId !== "nenhum" && (
+                  <div className="p-3 bg-green-50/50 border border-green-100 rounded-lg animate-in fade-in zoom-in-95 duration-200">
+                    {(() => {
+                      const f = suportesFiltrados.find(s => s.id.toString() === funcionarioSelecionadoId)
+                      if (!f) return null
+                      return (
+                        <div className="flex items-start gap-3">
+                          <div className="bg-green-100 p-2 rounded-full">
+                            <UserCog className="size-4 text-green-600" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-green-800 uppercase tracking-wider">Técnico Selecionado</p>
+                            <div className="text-sm text-[#1a3a5c]">
+                              <span className="font-bold">{f.nome}</span> está pronto para atender seu chamado nível {f.nivel?.toUpperCase()}.
+                            </div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Mail className="size-3" /> {f.email || "Sem e-mail"}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="titulo">Título do Chamado</Label>

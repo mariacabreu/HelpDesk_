@@ -301,7 +301,7 @@ export function EquipamentosPage() {
                 <Input value={form.numero_serie} onChange={e => setForm({ ...form, numero_serie: e.target.value })} placeholder="ABC123XYZ" />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setOpenNovo(false)}>Cancelar</Button>
               <Button className="bg-[#1a3a5c]" onClick={cadastrarEquipamento} disabled={saving}>
                 {saving ? "Cadastrando..." : "Cadastrar"}
@@ -374,7 +374,7 @@ export function EquipamentosPage() {
               />
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-4">
               <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2">
                 <Search className="size-4" />
                 Filtrar

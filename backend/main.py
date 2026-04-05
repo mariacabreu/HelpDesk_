@@ -6,8 +6,94 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento
 from datetime import datetime
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 app = FastAPI()
+
+def generate_unique_login(db: Session):
+    while True:
+        # Gera 8 números aleatórios
+        login = "".join([str(random.randint(0, 9)) for _ in range(8)])
+        # Verifica se já existe no banco
+        exists = db.query(Funcionario).filter(Funcionario.login == login).first()
+        if not exists:
+            return login
+
+def extract_password_from_cpf(cpf: str):
+    if not cpf:
+        # Fallback se não tiver CPF (apesar de ser recomendado)
+        return "123456"
+    # Remove caracteres não numéricos
+    clean_cpf = "".join(filter(str.isdigit, cpf))
+    # Pega os 6 primeiros
+    return clean_cpf[:6]
+
+def send_real_email(to_email: str, login: str):
+    import smtplib
+    import os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from_name = os.getenv("SMTP_FROM_NAME")
+
+    msg = MIMEMultipart()
+    msg["From"] = f"{smtp_from_name} <{smtp_user}>"
+    msg["To"] = to_email
+    msg["Subject"] = "Boas-vindas e dados de acesso ao sistema"
+
+    body = f"""
+Prezado(a) colaborador(a),
+
+Seja bem-vindo(a) à nossa equipe! É com grande satisfação que recebemos você em nosso time.
+
+Informamos que seu acesso ao sistema já foi criado com sucesso. Abaixo, seguem seus dados de login:
+
+Login: {login}
+Senha provisória: os 6 primeiros dígitos do seu CPF
+
+Por questões de segurança, orientamos que a senha seja alterada no primeiro acesso.
+
+Desejamos muito sucesso nessa nova jornada e nos colocamos à disposição para qualquer suporte necessário.
+
+Atenciosamente,
+Equipe de TI / Recursos Humanos
+"""
+
+    msg.attach(MIMEText(body, "plain", "utf-8" ))
+
+    try:
+        print("--- DEBUG ENVIO DE E-MAIL ---")
+        print(f"SMTP_SERVER: {smtp_server}")
+        print(f"SMTP_PORT: {smtp_port}")
+        print(f"SMTP_USER: {smtp_user}")
+        # A senha não será printada por segurança, mas verificaremos se existe
+        print(f"SMTP_PASS configurado: {'Sim' if smtp_password else 'Não'}")
+        
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.set_debuglevel(1) # Ativa logs detalhados do SMTP no terminal
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, to_email, msg.as_string())
+        server.quit()
+        print(f"E-mail enviado com sucesso para: {to_email}")
+        return True
+    except Exception as e:
+        print("Erro detalhado ao enviar:", e)
+        return False
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -43,10 +129,34 @@ class ChamadoCreate(BaseModel):
     empresa_id: int
     solicitante_id: int
     equipamento_id: int | None = None
+    atribuido_a_id: int | None = None # Nova coluna para atribuição direta
     titulo: str
     descricao: str
     tipo: str
     prioridade: str
+
+class FuncionarioCreate(BaseModel):
+    empresa_id: int
+    nome: str
+    cpf: str | None = None
+    email: str
+    telefone: str | None = None
+    cargo: str | None = None
+    setor: str | None = None
+    nivel: str | None = "n1"
+    permissao: str | None = "usuario"
+    # login e senha serão gerados automaticamente no backend
+
+class FuncionarioUpdate(BaseModel):
+    nome: str | None = None
+    cpf: str | None = None
+    email: str | None = None
+    telefone: str | None = None
+    cargo: str | None = None
+    setor: str | None = None
+    nivel: str | None = None
+    permissao: str | None = None
+    status: str | None = None
 
 class EmpresaCreate(BaseModel):
     razao_social: str
@@ -75,6 +185,15 @@ class EquipamentoCreate(BaseModel):
     modelo: str | None = None
     numero_serie: str | None = None
     status: str | None = "ativo"
+
+class EquipamentoUpdate(BaseModel):
+    nome: str | None = None
+    patrimonio: str | None = None
+    tipo: str | None = None
+    marca: str | None = None
+    modelo: str | None = None
+    numero_serie: str | None = None
+    status: str | None = None
 
 @app.post("/empresas")
 def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
@@ -124,10 +243,10 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
             empresa_id=db_empresa.id,
             nome=empresa.nome_responsavel or "Administrador",
             email=empresa.email,
-        telefone=empresa.telefone,
-        cargo="Empresa", # Role empresa é baseada no cargo "Empresa", "Diretor" ou "Desenvolvedora"
-        setor="Diretoria",
-        login=empresa.login,
+            telefone=empresa.telefone,
+            cargo="Empresa", # Role empresa é baseada no cargo "Empresa", "Diretor" ou "Desenvolvedora"
+            setor="Administrador de rede",
+            login=empresa.login,
             senha=empresa.senha
         )
         db.add(db_funcionario)
@@ -190,15 +309,37 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             "critica": Prioridade.CRITICA
         }
         
+        atribuido_id = chamado.atribuido_a_id
+        
+        # Lógica de atribuição automática aleatória se solicitado (ID -1)
+        if atribuido_id == -1:
+            # Buscar todos os funcionários de suporte com o nível correspondente à prioridade
+            nivel_alvo = "n1"
+            if chamado.prioridade.lower() == "media": nivel_alvo = "n2"
+            if chamado.prioridade.lower() == "alta": nivel_alvo = "n3"
+            
+            # Busca suporte técnico (analistas) da empresa que gerencia o suporte
+            # Para este MVP, vamos buscar funcionários da mesma empresa que tenham o nível
+            suportes = db.query(Funcionario).filter(
+                Funcionario.nivel == nivel_alvo,
+                Funcionario.status == "ativo"
+            ).all()
+            
+            if suportes:
+                atribuido_id = random.choice(suportes).id
+            else:
+                atribuido_id = None
+
         db_chamado = Chamado(
             empresa_id=chamado.empresa_id,
             solicitante_id=chamado.solicitante_id,
             equipamento_id=chamado.equipamento_id if chamado.equipamento_id and chamado.equipamento_id > 0 else None,
+            atribuido_a_id=atribuido_id if atribuido_id and atribuido_id > 0 else None,
             titulo=chamado.titulo,
             descricao=chamado.descricao,
             tipo=chamado.tipo,
             prioridade=prioridade_map.get(chamado.prioridade.lower(), Prioridade.MEDIA),
-            status=StatusChamado.ABERTO
+            status=StatusChamado.ABERTO if not atribuido_id else StatusChamado.EM_ATENDIMENTO
         )
         db.add(db_chamado)
         db.commit()
@@ -237,6 +378,41 @@ def create_equipamento(e: EquipamentoCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar equipamento: {str(ex)}")
 
+@app.patch("/equipamentos/{equipamento_id}")
+def update_equipamento(equipamento_id: int, e: EquipamentoUpdate, db: Session = Depends(get_db)):
+    db_eq = db.query(Equipamento).filter(Equipamento.id == equipamento_id).first()
+    if not db_eq:
+        raise HTTPException(status_code=404, detail="Equipamento não encontrado")
+    
+    update_data = e.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_eq, key, value)
+    
+    try:
+        db.commit()
+        db.refresh(db_eq)
+        return db_eq
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar equipamento: {str(ex)}")
+
+@app.delete("/equipamentos/{equipamento_id}")
+def delete_equipamento(equipamento_id: int, db: Session = Depends(get_db)):
+    db_eq = db.query(Equipamento).filter(Equipamento.id == equipamento_id).first()
+    if not db_eq:
+        raise HTTPException(status_code=404, detail="Equipamento não encontrado")
+    
+    try:
+        # Primeiro desvincular de chamados se houver (opcional, ou apenas deletar se não tiver restrição)
+        db.query(Chamado).filter(Chamado.equipamento_id == equipamento_id).update({Chamado.equipamento_id: None})
+        
+        db.delete(db_eq)
+        db.commit()
+        return {"success": True, "message": "Equipamento excluído com sucesso"}
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir equipamento: {str(ex)}")
+
 @app.get("/chamados/empresa/{empresa_id}")
 def get_chamados_empresa(empresa_id: int, db: Session = Depends(get_db)):
     return db.query(Chamado).filter(Chamado.empresa_id == empresa_id).all()
@@ -248,6 +424,93 @@ def get_chamados_solicitante(solicitante_id: int, db: Session = Depends(get_db))
 @app.get("/funcionarios/empresa/{empresa_id}")
 def get_funcionarios_empresa(empresa_id: int, db: Session = Depends(get_db)):
     return db.query(Funcionario).filter(Funcionario.empresa_id == empresa_id).all()
+
+@app.patch("/funcionarios/{funcionario_id}")
+def update_funcionario(funcionario_id: int, f: FuncionarioUpdate, db: Session = Depends(get_db)):
+    db_func = db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
+    if not db_func:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+    
+    update_data = f.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_func, key, value)
+    
+    try:
+        db.commit()
+        db.refresh(db_func)
+        return db_func
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar funcionário: {str(e)}")
+
+@app.delete("/funcionarios/{funcionario_id}")
+def delete_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
+    db_func = db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
+    if not db_func:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+    
+    try:
+        # 1. Desatribuir chamados vinculados a este funcionário (atribuido_a_id)
+        db.query(Chamado).filter(Chamado.atribuido_a_id == funcionario_id).update({Chamado.atribuido_a_id: None})
+        
+        # 2. Lidar com chamados onde ele é o solicitante (opcional, mas evita erros se houver restrição)
+        # Se o banco não permitir solicitante_id nulo, talvez devêssemos impedir a exclusão 
+        # ou atribuir a um usuário "Excluído/Anônimo".
+        # Por enquanto, vamos apenas tentar excluir o funcionário, pois o erro relatado foi no atribuido_a_id.
+        
+        db.delete(db_func)
+        db.commit()
+        return {"success": True, "message": "Funcionário excluído com sucesso"}
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao excluir funcionário: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir funcionário: {str(e)}")
+
+@app.post("/funcionarios")
+def create_funcionario(f: FuncionarioCreate, db: Session = Depends(get_db)):
+    # 1. Verificar se o e-mail já existe
+    existing_email = db.query(Funcionario).filter(Funcionario.email == f.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Este e-mail já está em uso")
+    
+    # 2. Gerar login único de 8 números
+    login_gerado = generate_unique_login(db)
+    
+    # 3. Gerar senha a partir dos 6 primeiros números do CPF
+    senha_gerada = extract_password_from_cpf(f.cpf)
+    
+    try:
+        novo = Funcionario(
+            empresa_id=f.empresa_id,
+            nome=f.nome,
+            cpf=f.cpf,
+            email=f.email,
+            telefone=f.telefone,
+            cargo=f.cargo,
+            setor=f.setor,
+            nivel=f.nivel,
+            permissao=f.permissao or "usuario",
+            login=login_gerado,
+            senha=senha_gerada
+        )
+        db.add(novo)
+        db.commit()
+        db.refresh(novo)
+        
+        # 4. Enviar e-mail real com informações de acesso
+        enviado = send_real_email(
+            f.email, 
+            login_gerado
+        )
+        
+        return {
+            "success": True,
+            "funcionario": novo,
+            "email_enviado": enviado
+        }
+    except Exception as ex:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar funcionário: {str(ex)}")
 
 @app.get("/stats/empresa/{empresa_id}")
 def get_stats_empresa(empresa_id: int, db: Session = Depends(get_db)):

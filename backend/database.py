@@ -57,14 +57,19 @@ class Funcionario(Base):
     telefone = Column(String(20))
     cargo = Column(String(100))
     setor = Column(String(100))
+    nivel = Column(String(20)) # n1, n2, n3
     
     # Autenticação
     login = Column(String(50), unique=True, nullable=False)
     senha = Column(String(255), nullable=False) # Em produção usar hash
+    permissao = Column(String(20), default="usuario") # admin, usuario
+    status = Column(String(20), default="ativo") # ativo, inativo
+    data_cadastro = Column(DateTime, default=datetime.utcnow)
     
     # Relacionamentos
     empresa = relationship("Empresa", back_populates="funcionarios")
-    chamados_solicitados = relationship("Chamado", back_populates="solicitante")
+    chamados_solicitados = relationship("Chamado", foreign_keys="Chamado.solicitante_id", back_populates="solicitante")
+    chamados_atribuidos = relationship("Chamado", foreign_keys="Chamado.atribuido_a_id", back_populates="atribuido_a")
 
 class Equipamento(Base):
     __tablename__ = 'equipamentos'
@@ -90,6 +95,7 @@ class Chamado(Base):
     empresa_id = Column(Integer, ForeignKey('empresas.id'))
     solicitante_id = Column(Integer, ForeignKey('funcionarios.id'))
     equipamento_id = Column(Integer, ForeignKey('equipamentos.id'), nullable=True)
+    atribuido_a_id = Column(Integer, ForeignKey('funcionarios.id'), nullable=True)
     
     titulo = Column(String(200), nullable=False)
     descricao = Column(Text, nullable=False)
@@ -102,12 +108,17 @@ class Chamado(Base):
     
     # Relacionamentos
     empresa = relationship("Empresa", back_populates="chamados")
-    solicitante = relationship("Funcionario", back_populates="chamados_solicitados")
+    solicitante = relationship("Funcionario", foreign_keys=[solicitante_id], back_populates="chamados_solicitados")
+    atribuido_a = relationship("Funcionario", foreign_keys=[atribuido_a_id], back_populates="chamados_atribuidos")
     equipamento = relationship("Equipamento", back_populates="chamados")
 
 # Configuração do Banco de Dados
 DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_recycle=3600,
+    pool_pre_ping=True
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():

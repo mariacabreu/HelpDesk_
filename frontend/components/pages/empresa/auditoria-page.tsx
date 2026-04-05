@@ -15,6 +15,8 @@ import {
   Search, Filter, Shield, Download, Eye, User, FileText, 
   Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw
 } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 const moduloIcons = {
   Chamados: FileText,
@@ -180,6 +182,32 @@ export function AuditoriaPage() {
     }, 800)
   }
 
+  const exportarPDF = () => {
+    const doc = new jsPDF()
+    const tableData = registrosFiltrados.map(item => [
+      formatDate(item.timestamp),
+      item.usuario,
+      item.modulo,
+      item.acao,
+      item.descricao,
+      item.ip
+    ])
+
+    doc.text("Relatório de Auditoria - HelpDesk", 14, 15)
+    doc.setFontSize(10)
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22)
+    doc.text(`Total de registros: ${registrosFiltrados.length}`, 14, 28)
+
+    autoTable(doc, {
+      startY: 35,
+      head: [["Data/Hora", "Usuário", "Módulo", "Ação", "Descrição", "IP"]],
+      body: tableData,
+      headStyles: { fillStyle: "bold", fillColor: [26, 58, 92] },
+    })
+
+    doc.save(`auditoria-helpdesk-${new Date().getTime()}.pdf`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -192,7 +220,7 @@ export function AuditoriaPage() {
             <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={exportarPDF} disabled={loading || registrosFiltrados.length === 0}>
             <Download className="size-4 mr-2" />
             Exportar Relatório
           </Button>
@@ -382,8 +410,9 @@ export function AuditoriaPage() {
                       <TableCell className="font-mono text-xs text-muted-foreground">{registro.ip}</TableCell>
                       <TableCell className="text-right">
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           size="icon"
+                          className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
                           onClick={() => {
                             setRegistroSelecionado(registro)
                             setModalDetalhes(true)

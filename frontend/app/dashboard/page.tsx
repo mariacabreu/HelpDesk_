@@ -58,7 +58,7 @@ export default function DashboardPage() {
       case "meus-chamados":
         return <MeusChamadosPage />
       case "meus-equipamentos":
-        return <MeusEquipamentosPage />
+        return <MeusEquipamentosPage onOpenTicket={() => setActiveTab("novo-chamado")} />
       case "gestao-funcionarios":
         return <GestaoFuncionariosPage />
       case "logs":

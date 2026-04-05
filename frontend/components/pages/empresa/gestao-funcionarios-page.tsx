@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { formatDateShort } from "@/lib/utils"
-import { Plus, Eye, Pencil, XCircle, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2 } from "lucide-react"
+import { toast } from "sonner"
+import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle } from "lucide-react"
 
 const statusConfig = {
   ativo: { label: "Ativo", cor: "bg-green-100 text-green-800" },
@@ -21,6 +22,12 @@ const statusConfig = {
 const permissaoConfig = {
   admin: { label: "Administrador", cor: "bg-purple-100 text-purple-800" },
   usuario: { label: "Usuário", cor: "bg-blue-100 text-blue-800" },
+}
+
+const nivelConfig: Record<string, string> = {
+  n1: "Júnior (N1)",
+  n2: "Pleno (N2)",
+  n3: "Sênior (N3)",
 }
 
 export function GestaoFuncionariosPage() {
@@ -34,6 +41,7 @@ export function GestaoFuncionariosPage() {
   const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
+  const [modalEditar, setModalEditar] = useState(false)
 
   // Estados do formulário
   const [novoFunc, setNovoFunc] = useState({
@@ -44,9 +52,20 @@ export function GestaoFuncionariosPage() {
     cargo: "",
     setor: "",
     nivel: "n1",
-    permissao: "usuario",
-    senha: "",
-    confirmarSenha: ""
+    permissao: "usuario"
+  })
+
+  const [editFunc, setEditFunc] = useState<any>({
+    id: null,
+    nome: "",
+    cpf: "",
+    email: "",
+    telefone: "",
+    cargo: "",
+    setor: "",
+    nivel: "",
+    permissao: "",
+    status: ""
   })
 
   const fetchFuncionarios = async () => {
@@ -55,13 +74,20 @@ export function GestaoFuncionariosPage() {
       const user = JSON.parse(storedUser)
       setUserData(user)
       const empresaId = user.empresa?.id
+      console.log("Buscando funcionários para empresaId:", empresaId)
       if (empresaId) {
         try {
           const res = await fetch(`/api/funcionarios/empresa/${empresaId}`)
+          if (!res.ok) {
+            throw new Error(`Erro ${res.status}: ${res.statusText}`)
+          }
           const data = await res.json()
           setFuncionarios(data)
         } catch (err) {
           console.error("Erro ao buscar funcionários:", err)
+          toast.error("Erro ao carregar funcionários", {
+            description: "Não foi possível carregar a lista de funcionários do servidor."
+          })
         } finally {
           setLoading(false)
         }
@@ -74,13 +100,10 @@ export function GestaoFuncionariosPage() {
   }, [])
 
   const handleCadastrar = async () => {
-    if (!novoFunc.nome || !novoFunc.email || !novoFunc.senha) {
-      alert("Por favor, preencha os campos obrigatórios (Nome, E-mail e Senha).")
-      return
-    }
-
-    if (novoFunc.senha !== novoFunc.confirmarSenha) {
-      alert("As senhas não coincidem.")
+    if (!novoFunc.nome || !novoFunc.email || !novoFunc.cpf) {
+      toast.error("Campos obrigatórios", {
+        description: "Por favor, preencha Nome, E-mail e CPF."
+      })
       return
     }
 
@@ -94,8 +117,8 @@ export function GestaoFuncionariosPage() {
         telefone: novoFunc.telefone,
         cargo: novoFunc.cargo,
         setor: novoFunc.setor,
-        login: novoFunc.email, // Usando e-mail como login por padrão
-        senha: novoFunc.senha
+        nivel: novoFunc.nivel,
+        permissao: novoFunc.permissao
       }
 
       const response = await fetch("/api/funcionarios", {
@@ -104,28 +127,104 @@ export function GestaoFuncionariosPage() {
         body: JSON.stringify(payload)
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Erro ao cadastrar funcionário")
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.detail || "Erro ao cadastrar funcionário")
+        }
+
+        // Notificação melhorada com Sonner
+        toast.success("Funcionário Cadastrado!", {
+          description: data.email_enviado 
+            ? "Acesso enviado para o e-mail com sucesso." 
+            : "Funcionário criado, mas houve um erro ao enviar o e-mail.",
+          icon: <CheckCircle2 className="size-5 text-green-500" />,
+          duration: 5000,
+        })
+      } else {
+        const text = await response.text()
+        console.error("Resposta do servidor não é JSON:", text)
+        throw new Error("Erro interno do servidor. Por favor, tente novamente.")
       }
 
-      alert("Funcionário cadastrado com sucesso!")
       setModalCadastro(false)
       setNovoFunc({
         nome: "", cpf: "", email: "", telefone: "", cargo: "", setor: "",
-        nivel: "n1", permissao: "usuario", senha: "", confirmarSenha: ""
+        nivel: "n1", permissao: "usuario"
       })
       fetchFuncionarios()
     } catch (err: any) {
-      alert(err.message)
+      toast.error("Erro no cadastro", {
+        description: err.message
+      })
     } finally {
       setSaving(false)
     }
   }
 
+  const handleEditar = async () => {
+    if (!editFunc.nome || !editFunc.email || !editFunc.cpf) {
+      toast.error("Campos obrigatórios", {
+        description: "Por favor, preencha Nome, E-mail e CPF."
+      })
+      return
+    }
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/funcionarios/${editFunc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFunc)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Erro ao atualizar funcionário")
+      }
+
+      toast.success("Funcionário Atualizado!", {
+        description: "As informações foram salvas com sucesso."
+      })
+      setModalEditar(false)
+      fetchFuncionarios()
+    } catch (err: any) {
+      toast.error("Erro na atualização", {
+        description: err.message
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExcluir = async (id: number) => {
+    if (!confirm("Tem certeza que deseja excluir permanentemente este funcionário?")) return
+
+    try {
+      const response = await fetch(`/api/funcionarios/${id}`, {
+        method: "DELETE"
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Erro ao excluir funcionário")
+      }
+
+      toast.success("Funcionário Excluído", {
+        description: "O registro foi removido permanentemente."
+      })
+      fetchFuncionarios()
+    } catch (err: any) {
+      toast.error("Erro na exclusão", {
+        description: err.message
+      })
+    }
+  }
+
   const funcionariosFiltrados = funcionarios.filter(func => {
-    if (filtroDepartamento && func.setor !== filtroDepartamento) return false
-    // if (filtroStatus && func.status !== filtroStatus) return false // Backend doesn't have status yet
+    if (filtroDepartamento && filtroDepartamento !== "todos" && func.setor !== filtroDepartamento) return false
+    if (filtroStatus && filtroStatus !== "todos" && func.status !== filtroStatus) return false
     if (busca && !func.nome.toLowerCase().includes(busca.toLowerCase()) && 
         !func.email.toLowerCase().includes(busca.toLowerCase())) return false
     return true
@@ -240,10 +339,13 @@ export function GestaoFuncionariosPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="TI">TI</SelectItem>
-                  <SelectItem value="Comercial">Comercial</SelectItem>
-                  <SelectItem value="Financeiro">Financeiro</SelectItem>
-                  <SelectItem value="Diretoria">Diretoria</SelectItem>
+                  <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                  <SelectItem value="QA / Testes">QA / Testes</SelectItem>
+                  <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
+                  <SelectItem value="Backup">Backup</SelectItem>
+                  <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
+                  <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
+                  <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -285,6 +387,7 @@ export function GestaoFuncionariosPage() {
                   <TableHead>Funcionário</TableHead>
                   <TableHead className="w-[200px]">E-mail</TableHead>
                   <TableHead className="w-[150px]">Cargo</TableHead>
+                  <TableHead className="w-[100px]">Nível</TableHead>
                   <TableHead className="w-[120px]">Departamento</TableHead>
                   <TableHead className="w-[120px]">Permissão</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
@@ -313,6 +416,11 @@ export function GestaoFuncionariosPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{funcionario.email}</TableCell>
                       <TableCell>{funcionario.cargo}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                          {funcionario.nivel || "N1"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{funcionario.setor}</TableCell>
                       <TableCell>
                         <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.cor || "bg-blue-100 text-blue-800"}>
@@ -325,10 +433,11 @@ export function GestaoFuncionariosPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-2">
                           <Button 
-                            variant="ghost" 
+                            variant="outline" 
                             size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
                             title="Visualizar"
                             onClick={() => {
                               setFuncionarioSelecionado(funcionario)
@@ -337,14 +446,38 @@ export function GestaoFuncionariosPage() {
                           >
                             <Eye className="size-4 text-[#3ba5d8]" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Editar">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-green-50 hover:border-[#7ac142]/50 transition-all hover:scale-110"
+                            title="Editar"
+                            onClick={() => {
+                              setEditFunc({
+                                id: funcionario.id,
+                                nome: funcionario.nome,
+                                cpf: funcionario.cpf,
+                                email: funcionario.email,
+                                telefone: funcionario.telefone,
+                                cargo: funcionario.cargo,
+                                setor: funcionario.setor,
+                                nivel: funcionario.nivel,
+                                permissao: funcionario.permissao,
+                                status: funcionario.status
+                              })
+                              setModalEditar(true)
+                            }}
+                          >
                             <Pencil className="size-4 text-[#7ac142]" />
                           </Button>
-                          {funcionario.status !== "inativo" && (
-                            <Button variant="ghost" size="icon" title="Inativar">
-                              <XCircle className="size-4 text-red-500" />
-                            </Button>
-                          )}
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
+                            title="Excluir"
+                            onClick={() => handleExcluir(funcionario.id)}
+                          >
+                            <Trash2 className="size-4 text-red-500" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -415,6 +548,13 @@ export function GestaoFuncionariosPage() {
                     <p className="text-sm font-medium">{formatDateShort(funcionarioSelecionado.dataCadastro)}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <Shield className="size-4 text-[#3ba5d8]" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nível</p>
+                    <p className="text-sm font-medium uppercase">{funcionarioSelecionado.nivel || "N1"}</p>
+                  </div>
+                </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Permissão</p>
                   <Badge className={permissaoConfig[funcionarioSelecionado.permissao as keyof typeof permissaoConfig].cor}>
@@ -428,14 +568,159 @@ export function GestaoFuncionariosPage() {
                   </Badge>
                 </div>
               </div>
+
+              <div className="pt-4 border-t space-y-3">
+                <p className="text-sm font-semibold text-[#1a3a5c] flex items-center gap-2">
+                  <Lock className="size-4" />
+                  Credenciais de Acesso
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <UserCircle className="size-4 text-blue-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Login</p>
+                      <p className="text-sm font-mono font-bold text-blue-700">{funcionarioSelecionado.login}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <Lock className="size-4 text-blue-600" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Senha Inicial</p>
+                      <p className="text-sm font-mono font-bold text-blue-700">{funcionarioSelecionado.senha}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground italic">
+                  * A senha inicial corresponde aos 6 primeiros dígitos do CPF.
+                </p>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Modal Editar */}
+      <Dialog open={modalEditar} onOpenChange={setModalEditar}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1a3a5c]">Editar Funcionário</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do funcionário selecionado
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="edit-nome">Nome Completo</Label>
+                <Input 
+                  id="edit-nome" 
+                  value={editFunc.nome}
+                  onChange={(e) => setEditFunc({...editFunc, nome: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-cpf">CPF</Label>
+                <Input 
+                  id="edit-cpf" 
+                  value={editFunc.cpf}
+                  onChange={(e) => setEditFunc({...editFunc, cpf: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">E-mail Corporativo</Label>
+                <Input 
+                  id="edit-email" 
+                  type="email" 
+                  value={editFunc.email}
+                  onChange={(e) => setEditFunc({...editFunc, email: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-telefone">Telefone</Label>
+                <Input 
+                  id="edit-telefone" 
+                  value={editFunc.telefone}
+                  onChange={(e) => setEditFunc({...editFunc, telefone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-cargo">Cargo</Label>
+                <Input 
+                  id="edit-cargo" 
+                  value={editFunc.cargo}
+                  onChange={(e) => setEditFunc({...editFunc, cargo: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select value={editFunc.setor} onValueChange={(val) => setEditFunc({...editFunc, setor: val})}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="QA / Testes">QA / Testes</SelectItem>
+                    <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
+                    <SelectItem value="Backup">Backup</SelectItem>
+                    <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
+                    <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
+                    <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nível</Label>
+                  <Select value={editFunc.nivel} onValueChange={(val) => setEditFunc({...editFunc, nivel: val})}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o nível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(nivelConfig).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={editFunc.status} onValueChange={(val) => setEditFunc({...editFunc, status: val})}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-3">
+            <Button variant="outline" onClick={() => setModalEditar(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-[#7ac142] hover:bg-[#6ab035]" 
+              onClick={handleEditar}
+              disabled={saving}
+            >
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Cadastro */}
       <Dialog open={modalCadastro} onOpenChange={setModalCadastro}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-[#1a3a5c]">Novo Funcionário</DialogTitle>
             <DialogDescription>
@@ -494,61 +779,55 @@ export function GestaoFuncionariosPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label>Departamento</Label>
                 <Select value={novoFunc.setor} onValueChange={(val) => setNovoFunc({...novoFunc, setor: val})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o departamento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="TI">TI</SelectItem>
-                    <SelectItem value="Comercial">Comercial</SelectItem>
-                    <SelectItem value="Financeiro">Financeiro</SelectItem>
-                    <SelectItem value="Diretoria">Diretoria</SelectItem>
-                    <SelectItem value="RH">RH</SelectItem>
+                    <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="QA / Testes">QA / Testes</SelectItem>
+                    <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
+                    <SelectItem value="Backup">Backup</SelectItem>
+                    <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
+                    <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
+                    <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Permissão</Label>
-                <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usuario">Usuário Comum</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-              <div className="space-y-2">
-                <Label htmlFor="senha-func">Senha Temporária</Label>
-                <Input 
-                  id="senha-func" 
-                  type="password" 
-                  placeholder="********" 
-                  value={novoFunc.senha}
-                  onChange={(e) => setNovoFunc({...novoFunc, senha: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="conf-senha-func">Confirmar Senha</Label>
-                <Input 
-                  id="conf-senha-func" 
-                  type="password" 
-                  placeholder="********" 
-                  value={novoFunc.confirmarSenha}
-                  onChange={(e) => setNovoFunc({...novoFunc, confirmarSenha: e.target.value})}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nível</Label>
+                  <Select value={novoFunc.nivel} onValueChange={(val) => setNovoFunc({...novoFunc, nivel: val})}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o nível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(nivelConfig).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Permissão</Label>
+                  <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione a permissão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="usuario">Usuário Comum</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="gap-3">
             <Button variant="outline" onClick={() => setModalCadastro(false)} disabled={saving}>
               Cancelar
             </Button>

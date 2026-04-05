@@ -99,7 +99,7 @@ export function LogsPage() {
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Logs do Sistema</h1>
           <p className="text-muted-foreground">Monitore todas as atividades do sistema</p>
         </div>
-        <Button variant="outline" onClick={exportarPDF}>
+        <Button variant="outline" className="bg-white border-gray-200 shadow-sm hover:bg-gray-50 transition-all" onClick={exportarPDF}>
           <Download className="size-4 mr-2" />
           Exportar Logs
         </Button>

@@ -323,7 +323,7 @@ export function BackupPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-3">
                             {backup.status === "concluido" && (
                               <>
                                 <Button variant="ghost" size="icon" title="Download">

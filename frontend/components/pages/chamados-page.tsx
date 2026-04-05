@@ -223,7 +223,7 @@ export function ChamadosPage() {
               </Select>
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-4">
               <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2">
                 <Search className="size-4" />
                 Filtrar

@@ -40,7 +40,7 @@ def seed():
             email="joao@techsolutions.com",
             telefone="(11) 99999-8888",
             cargo="Analista de Suporte",
-            setor="TI",
+            setor="Manutenção de computadores",
             login="joao.silva",
             senha="password123" # Em produção use hash!
         )
@@ -52,7 +52,7 @@ def seed():
             email="maria@techsolutions.com",
             telefone="(11) 97777-6666",
             cargo="Desenvolvedora Senior",
-            setor="Desenvolvimento",
+            setor="Desenvolvedor Full Stack",
             login="maria.souza",
             senha="password456"
         )

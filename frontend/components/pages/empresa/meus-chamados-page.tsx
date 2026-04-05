@@ -325,18 +325,42 @@ export function MeusChamadosPage() {
                         {formatDate(chamado.data_abertura)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="Visualizar" onClick={() => abrirDetalhes(chamado)}>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                            title="Visualizar" 
+                            onClick={() => abrirDetalhes(chamado)}
+                          >
                             <Eye className="size-4 text-[#3ba5d8]" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Ver anexos" disabled={(chamado?.anexos?.length ?? 0) === 0}>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-green-50 hover:border-[#7ac142]/50 transition-all hover:scale-110"
+                            title="Ver anexos" 
+                            disabled={(chamado?.anexos?.length ?? 0) === 0}
+                          >
                             <Paperclip className="size-4 text-[#7ac142]" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Comentar" onClick={() => abrirComentario(chamado)}>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#1a3a5c]/30 transition-all hover:scale-110"
+                            title="Comentar" 
+                            onClick={() => abrirComentario(chamado)}
+                          >
                             <MessageSquare className="size-4 text-[#1a3a5c]" />
                           </Button>
                           {chamado.status !== "fechado" && chamado.status !== "resolvido" && (
-                            <Button variant="ghost" size="icon" title="Cancelar chamado" onClick={() => pedirCancelamento(chamado)}>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
+                              title="Cancelar chamado" 
+                              onClick={() => pedirCancelamento(chamado)}
+                            >
                               <XCircle className="size-4 text-red-500" />
                             </Button>
                           )}
@@ -483,7 +507,7 @@ export function MeusChamadosPage() {
             />
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="gap-3">
             <Button variant="outline" onClick={() => setModalComentario(false)}>
               Cancelar
             </Button>
@@ -506,7 +530,7 @@ export function MeusChamadosPage() {
               Deseja realmente cancelar o chamado {chamadoParaCancelar ? `CH-${String(chamadoParaCancelar.id).padStart(3,"0")}` : ""}? Esta ação fechará o chamado.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="gap-3">
             <AlertDialogCancel disabled={cancelLoading}>Voltar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmarCancelamento} disabled={cancelLoading}>
               {cancelLoading ? "Cancelando..." : "Confirmar cancelamento"}
