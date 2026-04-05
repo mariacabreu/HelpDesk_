@@ -85,7 +85,7 @@ export function MeusChamadosPage() {
       
       const solicitanteId = user.id
       if (solicitanteId) {
-        fetch(`http://localhost:8000/chamados/solicitante/${solicitanteId}`)
+        fetch(`/api/chamados/solicitante/${solicitanteId}`)
           .then(res => res.json())
           .then(data => setChamados(data))
           .catch(err => console.error("Erro ao buscar chamados:", err))
@@ -94,7 +94,7 @@ export function MeusChamadosPage() {
 
       const empresaId = user.empresa?.id
       if (empresaId) {
-        fetch(`http://localhost:8000/equipamentos/${empresaId}`)
+        fetch(`/api/equipamentos/${empresaId}`)
           .then(res => res.json())
           .then((data) => {
             const map: Record<string, { nome: string; patrimonio?: string }> = {}
@@ -136,7 +136,7 @@ export function MeusChamadosPage() {
     if (!chamadoParaCancelar) return
     setCancelLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/chamados/${chamadoParaCancelar.id}/cancelar`, {
+      const res = await fetch(`/api/chamados/${chamadoParaCancelar.id}/cancelar`, {
         method: "PATCH"
       })
       if (!res.ok) {
@@ -517,3 +517,4 @@ export function MeusChamadosPage() {
     </div>
   )
 }
+

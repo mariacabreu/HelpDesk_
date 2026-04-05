@@ -57,7 +57,7 @@ export function GestaoFuncionariosPage() {
       const empresaId = user.empresa?.id
       if (empresaId) {
         try {
-          const res = await fetch(`http://localhost:8000/funcionarios/empresa/${empresaId}`)
+          const res = await fetch(`/api/funcionarios/empresa/${empresaId}`)
           const data = await res.json()
           setFuncionarios(data)
         } catch (err) {
@@ -98,7 +98,7 @@ export function GestaoFuncionariosPage() {
         senha: novoFunc.senha
       }
 
-      const response = await fetch("http://localhost:8000/funcionarios", {
+      const response = await fetch("/api/funcionarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -502,43 +502,31 @@ export function GestaoFuncionariosPage() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ti">TI</SelectItem>
-                    <SelectItem value="comercial">Comercial</SelectItem>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                    <SelectItem value="rh">RH</SelectItem>
-                    <SelectItem value="diretoria">Diretoria</SelectItem>
+                    <SelectItem value="TI">TI</SelectItem>
+                    <SelectItem value="Comercial">Comercial</SelectItem>
+                    <SelectItem value="Financeiro">Financeiro</SelectItem>
+                    <SelectItem value="Diretoria">Diretoria</SelectItem>
+                    <SelectItem value="RH">RH</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Nível de Suporte</Label>
-                <Select value={novoFunc.nivel} onValueChange={(val) => setNovoFunc({...novoFunc, nivel: val})}>
+                <Label>Permissão</Label>
+                <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="n1">N1 - Básico</SelectItem>
-                    <SelectItem value="n2">N2 - Intermediário</SelectItem>
-                    <SelectItem value="n3">N3 - Avançado</SelectItem>
+                    <SelectItem value="usuario">Usuário Comum</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Permissão</Label>
-              <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="usuario">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
               <div className="space-y-2">
-                <Label htmlFor="senha-func">Senha</Label>
+                <Label htmlFor="senha-func">Senha Temporária</Label>
                 <Input 
                   id="senha-func" 
                   type="password" 
@@ -548,9 +536,9 @@ export function GestaoFuncionariosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmar-senha-func">Confirmar Senha</Label>
+                <Label htmlFor="conf-senha-func">Confirmar Senha</Label>
                 <Input 
-                  id="confirmar-senha-func" 
+                  id="conf-senha-func" 
                   type="password" 
                   placeholder="********" 
                   value={novoFunc.confirmarSenha}
@@ -564,8 +552,12 @@ export function GestaoFuncionariosPage() {
             <Button variant="outline" onClick={() => setModalCadastro(false)} disabled={saving}>
               Cancelar
             </Button>
-            <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={handleCadastrar} disabled={saving}>
-              {saving ? "Cadastrando..." : "Cadastrar"}
+            <Button 
+              className="bg-[#7ac142] hover:bg-[#6ab035]" 
+              onClick={handleCadastrar}
+              disabled={saving}
+            >
+              {saving ? "Cadastrando..." : "Cadastrar Funcionário"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -573,3 +565,4 @@ export function GestaoFuncionariosPage() {
     </div>
   )
 }
+

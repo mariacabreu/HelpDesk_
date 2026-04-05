@@ -30,13 +30,13 @@ export function DashboardEmpresaPage() {
       const empresaId = user.empresa?.id
       if (empresaId) {
         // Buscar estatísticas
-        fetch(`http://localhost:8000/stats/empresa/${empresaId}`)
+        fetch(`/api/stats/empresa/${empresaId}`)
           .then(res => res.json())
           .then(data => setDynamicStats(data))
           .catch(err => console.error("Erro ao buscar estatísticas:", err))
           
         // Buscar chamados recentes
-        fetch(`http://localhost:8000/chamados/empresa/${empresaId}`)
+        fetch(`/api/chamados/empresa/${empresaId}`)
           .then(res => res.json())
           .then(data => {
             // Ordenar por data de abertura (mais recente primeiro) e pegar os 5 primeiros
@@ -192,3 +192,4 @@ export function DashboardEmpresaPage() {
     </div>
   )
 }
+

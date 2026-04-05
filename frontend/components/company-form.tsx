@@ -139,7 +139,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
 
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:8000/empresas", {
+      const response = await fetch("/api/empresas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -601,3 +601,4 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
     </Card>
   )
 }
+

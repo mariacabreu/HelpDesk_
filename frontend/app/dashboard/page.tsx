@@ -89,9 +89,9 @@ export default function DashboardPage() {
         <DashboardHeader 
           userRole={userRole} 
           onRoleChange={handleRoleChange} 
-          userName={userData?.nome}
-          userEmail={userData?.email}
-          userCargo={userData?.cargo}
+          userName={userRole === "empresa" ? userData?.empresa?.nome_fantasia : userData?.nome}
+          userEmail={userRole === "empresa" ? userData?.empresa?.email : userData?.email}
+          userCargo={userRole === "empresa" ? "Administrador Empresa" : userData?.cargo}
         />
         <main className="flex-1 overflow-auto p-4 lg:p-6 bg-gray-50/50">
           <div className="max-w-7xl mx-auto h-full">

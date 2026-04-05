@@ -13,10 +13,130 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
-  Clock, ArrowRight, Database, Settings, Lock
+  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw
 } from "lucide-react"
 
+const moduloIcons = {
+  Chamados: FileText,
+  Equipamentos: Database,
+  Funcionários: User,
+  Backup: Lock,
+  Configurações: Settings,
+}
 
+const acaoConfig = {
+  Criar: { label: "Criar", cor: "bg-green-100 text-green-800" },
+  Atualizar: { label: "Atualizar", cor: "bg-blue-100 text-blue-800" },
+  Excluir: { label: "Excluir", cor: "bg-red-100 text-red-800" },
+  Executar: { label: "Executar", cor: "bg-purple-100 text-purple-800" },
+}
+
+const auditoriaMock = [
+  {
+    id: "AUD-001",
+    timestamp: "2024-04-04T10:30:00Z",
+    usuario: "Maria Souza",
+    modulo: "Chamados",
+    acao: "Criar",
+    descricao: "Novo chamado CH-005 criado para 'Notebook lento'",
+    ip: "192.168.1.15",
+    detalhes: {
+      antes: null,
+      depois: { titulo: "Notebook lento", prioridade: "alta", tipo: "incidente" }
+    }
+  },
+  {
+    id: "AUD-002",
+    timestamp: "2024-04-04T11:15:20Z",
+    usuario: "Maria Souza",
+    modulo: "Funcionários",
+    acao: "Atualizar",
+    descricao: "Alteração de cargo do funcionário João Silva",
+    ip: "192.168.1.15",
+    detalhes: {
+      antes: { cargo: "Analista Jr" },
+      depois: { cargo: "Analista Pleno" }
+    }
+  },
+  {
+    id: "AUD-003",
+    timestamp: "2024-04-04T12:00:00Z",
+    usuario: "Sistema",
+    modulo: "Backup",
+    acao: "Executar",
+    descricao: "Execução de backup manual solicitada",
+    ip: "127.0.0.1",
+    detalhes: {
+      antes: null,
+      depois: { status: "em_andamento", tipo: "manual" }
+    }
+  },
+  {
+    id: "AUD-004",
+    timestamp: "2024-04-03T15:45:10Z",
+    usuario: "João Silva",
+    modulo: "Equipamentos",
+    acao: "Criar",
+    descricao: "Novo equipamento PAT-2024-010 cadastrado",
+    ip: "192.168.1.16",
+    detalhes: {
+      antes: null,
+      depois: { nome: "Monitor LG 29", patrimonio: "PAT-2024-010", status: "ativo" }
+    }
+  },
+  {
+    id: "AUD-005",
+    timestamp: "2024-04-03T14:20:00Z",
+    usuario: "Maria Souza",
+    modulo: "Configurações",
+    acao: "Atualizar",
+    descricao: "Alteração do horário de backup automático",
+    ip: "192.168.1.15",
+    detalhes: {
+      antes: { horario: "02:00" },
+      depois: { horario: "03:00" }
+    }
+  },
+  {
+    id: "AUD-006",
+    timestamp: "2024-04-03T10:00:00Z",
+    usuario: "Sistema",
+    modulo: "Backup",
+    acao: "Executar",
+    descricao: "Backup automático concluído com sucesso",
+    ip: "127.0.0.1",
+    detalhes: {
+      antes: null,
+      depois: { status: "concluido", tamanho: "2.8 GB" }
+    }
+  },
+  {
+    id: "AUD-007",
+    timestamp: "2024-04-02T16:30:00Z",
+    usuario: "Maria Souza",
+    modulo: "Funcionários",
+    acao: "Criar",
+    descricao: "Novo funcionário 'Carlos Lima' cadastrado",
+    ip: "192.168.1.15",
+    detalhes: {
+      antes: null,
+      depois: { nome: "Carlos Lima", cargo: "Estagiário", setor: "TI" }
+    }
+  },
+  {
+    id: "AUD-008",
+    timestamp: "2024-04-02T09:15:00Z",
+    usuario: "João Silva",
+    modulo: "Chamados",
+    acao: "Atualizar",
+    descricao: "Status do chamado CH-001 alterado para 'Em Atendimento'",
+    ip: "192.168.1.16",
+    detalhes: {
+      antes: { status: "aberto" },
+      depois: { status: "em_atendimento" }
+    }
+  }
+]
 
 export function AuditoriaPage() {
   const [userData, setUserData] = useState<any>(null)
@@ -42,15 +162,23 @@ export function AuditoriaPage() {
   }, [])
 
   const registrosFiltrados = auditoria.filter(item => {
-    if (filtroModulo && item.modulo !== filtroModulo) return false
-    if (filtroAcao && item.acao !== filtroAcao) return false
-    if (filtroUsuario && item.usuario !== filtroUsuario) return false
+    if (filtroModulo && filtroModulo !== "todos" && item.modulo !== filtroModulo) return false
+    if (filtroAcao && filtroAcao !== "todas" && item.acao !== filtroAcao) return false
+    if (filtroUsuario && filtroUsuario !== "todos" && item.usuario !== filtroUsuario) return false
     if (busca && !item.descricao.toLowerCase().includes(busca.toLowerCase()) && 
         !item.usuario.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
-  const usuarios = [...new Set(auditoriaMock.map(r => r.usuario))]
+  const usuarios = [...new Set(auditoria.map(r => r.usuario))]
+
+  const atualizarAuditoria = () => {
+    setLoading(true)
+    setTimeout(() => {
+      setAuditoria([...auditoriaMock].sort(() => Math.random() - 0.5))
+      setLoading(false)
+    }, 800)
+  }
 
   return (
     <div className="space-y-6">
@@ -59,10 +187,16 @@ export function AuditoriaPage() {
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Auditoria</h1>
           <p className="text-muted-foreground">Rastreie todas as alterações realizadas no sistema</p>
         </div>
-        <Button variant="outline">
-          <Download className="size-4 mr-2" />
-          Exportar Relatório
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={atualizarAuditoria} disabled={loading}>
+            <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+          <Button variant="outline">
+            <Download className="size-4 mr-2" />
+            Exportar Relatório
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Resumo */}
@@ -74,7 +208,7 @@ export function AuditoriaPage() {
                 <Shield className="size-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{auditoriaMock.length}</p>
+                <p className="text-2xl font-bold text-[#1a3a5c]">{auditoria.length}</p>
                 <p className="text-xs text-muted-foreground">Total de Registros</p>
               </div>
             </div>
@@ -88,7 +222,7 @@ export function AuditoriaPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {auditoriaMock.filter(r => r.acao === "Criar").length}
+                  {auditoria.filter(r => r.acao === "Criar").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Criações</p>
               </div>
@@ -103,7 +237,7 @@ export function AuditoriaPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a3a5c]">
-                  {auditoriaMock.filter(r => r.acao === "Atualizar").length}
+                  {auditoria.filter(r => r.acao === "Atualizar").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Atualizações</p>
               </div>

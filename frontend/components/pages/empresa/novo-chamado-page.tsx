@@ -52,7 +52,7 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       
       // Buscar equipamentos da empresa
       if (user.empresa?.id) {
-        fetch(`http://localhost:8000/equipamentos/${user.empresa.id}`)
+        fetch(`/api/equipamentos/${user.empresa.id}`)
           .then(res => res.json())
           .then(data => setEquipamentos(data))
           .catch(err => console.error("Erro ao buscar equipamentos:", err))
@@ -97,7 +97,7 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       
       console.log("Enviando payload do chamado:", payload)
 
-      const response = await fetch("http://localhost:8000/chamados", {
+      const response = await fetch("/api/chamados", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -384,3 +384,4 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
     </div>
   )
 }
+

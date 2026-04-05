@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,10 +35,42 @@ export function BackupPage() {
     // Carregar histórico de backups (simulado por enquanto)
     setBackups([
       { 
-        id: "BKP-001",
-        data: "2024-01-15 02:00:00",
+        id: "BKP-005",
+        data: "2024-04-03 02:00:00",
         tipo: "automatico",
-        tamanho: "2.5 GB",
+        tamanho: "2.8 GB",
+        status: "concluido",
+        duracao: "12 min"
+      },
+      { 
+        id: "BKP-004",
+        data: "2024-04-02 02:00:00",
+        tipo: "automatico",
+        tamanho: "2.8 GB",
+        status: "concluido",
+        duracao: "11 min"
+      },
+      { 
+        id: "BKP-003",
+        data: "2024-04-01 02:00:00",
+        tipo: "automatico",
+        tamanho: "2.7 GB",
+        status: "concluido",
+        duracao: "14 min"
+      },
+      { 
+        id: "BKP-002",
+        data: "2024-03-31 02:00:00",
+        tipo: "automatico",
+        tamanho: "2.7 GB",
+        status: "erro",
+        duracao: "2 min"
+      },
+      { 
+        id: "BKP-001",
+        data: "2024-03-30 02:00:00",
+        tipo: "automatico",
+        tamanho: "2.6 GB",
         status: "concluido",
         duracao: "15 min"
       }

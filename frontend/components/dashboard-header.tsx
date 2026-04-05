@@ -143,8 +143,12 @@ export function DashboardHeader({
       <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-[#1a3a5c]">Meu Perfil</DialogTitle>
-            <DialogDescription>Visualize e edite suas informações pessoais.</DialogDescription>
+            <DialogTitle className="text-2xl font-bold text-[#1a3a5c]">
+              {userRole === "empresa" ? "Perfil da Empresa" : "Meu Perfil"}
+            </DialogTitle>
+            <DialogDescription>
+              {userRole === "empresa" ? "Informações cadastrais da empresa." : "Visualize e edite suas informações pessoais."}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-6 py-4">
             <Avatar className="h-24 w-24 border-4 border-[#3ba5d8]/20">
@@ -154,7 +158,9 @@ export function DashboardHeader({
             </Avatar>
             <div className="grid w-full gap-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Nome</Label>
+                <Label htmlFor="name" className="text-right">
+                  {userRole === "empresa" ? "Empresa" : "Nome"}
+                </Label>
                 <Input id="name" value={userName} className="col-span-3" readOnly />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -167,12 +173,14 @@ export function DashboardHeader({
                 </Label>
                 <Input value="(11) 98765-4321" className="col-span-3" readOnly />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right flex items-center justify-end gap-1">
-                  <Building className="h-3 w-3" /> Empresa
-                </Label>
-                <Input value="Tech Solutions Ltda" className="col-span-3" readOnly />
-              </div>
+              {userRole === "suporte" && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right flex items-center justify-end gap-1">
+                    <Building className="h-3 w-3" /> Empresa
+                  </Label>
+                  <Input value="Tech Solutions Ltda" className="col-span-3" readOnly />
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-3">

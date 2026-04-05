@@ -34,9 +34,18 @@ export function LogsPage() {
       const user = JSON.parse(storedUser)
       setUserData(user)
       
-      // Simulação de busca de logs do backend (não há endpoint real para isso ainda)
-      // Mas removemos o mock estático global
-      setLogs([])
+      // Simulação de busca de logs do backend
+      const mockLogs = [
+        { id: 1, timestamp: "2024-04-04T10:15:30Z", tipo: "info", modulo: "Autenticação", usuario: user.nome || "Maria Souza", acao: "Login realizado com sucesso", ip: "192.168.1.15" },
+        { id: 2, timestamp: "2024-04-04T11:20:45Z", tipo: "success", modulo: "Chamados", usuario: user.nome || "Maria Souza", acao: "Novo chamado CH-005 criado", ip: "192.168.1.15" },
+        { id: 3, timestamp: "2024-04-04T12:05:10Z", tipo: "warning", modulo: "Backup", usuario: "Sistema", acao: "Falha na sincronização do backup automático", ip: "127.0.0.1" },
+        { id: 4, timestamp: "2024-04-04T14:30:00Z", tipo: "info", modulo: "Equipamentos", usuario: user.nome || "Maria Souza", acao: "Consulta ao inventário de equipamentos", ip: "192.168.1.15" },
+        { id: 5, timestamp: "2024-04-04T15:45:20Z", tipo: "error", modulo: "Segurança", usuario: "Desconhecido", acao: "Tentativa de acesso não autorizado à API", ip: "45.12.89.201" },
+        { id: 6, timestamp: "2024-04-03T09:00:00Z", tipo: "info", modulo: "Funcionários", usuario: user.nome || "Maria Souza", acao: "Alteração de permissão para João Silva", ip: "192.168.1.15" },
+        { id: 7, timestamp: "2024-04-03T10:30:15Z", tipo: "success", modulo: "Backup", usuario: "Sistema", acao: "Backup automático realizado com sucesso", ip: "127.0.0.1" },
+        { id: 8, timestamp: "2024-04-03T14:15:00Z", tipo: "info", modulo: "Chamados", usuario: "João Silva", acao: "Comentário adicionado ao chamado CH-001", ip: "192.168.1.16" },
+      ]
+      setLogs(mockLogs)
       setLoading(false)
     }
   }, [])

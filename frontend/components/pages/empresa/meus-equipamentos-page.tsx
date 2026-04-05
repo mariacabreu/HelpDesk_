@@ -58,7 +58,7 @@ export function MeusEquipamentosPage() {
       
       const empresaId = user.empresa?.id
       if (empresaId) {
-        fetch(`http://localhost:8000/equipamentos/${empresaId}`)
+        fetch(`/api/equipamentos/${empresaId}`)
           .then(res => res.json())
           .then(data => setEquipamentos(data))
           .catch(err => console.error("Erro ao buscar equipamentos:", err))
@@ -91,7 +91,7 @@ export function MeusEquipamentosPage() {
     }
     try {
       setSaving(true)
-      const res = await fetch("http://localhost:8000/equipamentos", {
+      const res = await fetch("/api/equipamentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,7 +113,7 @@ export function MeusEquipamentosPage() {
       toast({ title: "Equipamento cadastrado", description: `Patrimônio ${novo.patrimonio}` })
       setModalCadastro(false)
       setCadastro({ nome: "", tipo: "", patrimonio: "", marca: "", modelo: "", numero_serie: "" })
-      const r = await fetch(`http://localhost:8000/equipamentos/${userData.empresa.id}`)
+      const r = await fetch(`/api/equipamentos/${userData.empresa.id}`)
       const data = await r.json()
       setEquipamentos(data)
     } catch (e: any) {
@@ -454,3 +454,4 @@ export function MeusEquipamentosPage() {
     </div>
   )
 }
+
