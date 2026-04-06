@@ -41,6 +41,7 @@ const statusConfig = {
   escalonado: { label: "Escalonado", cor: "bg-orange-100 text-orange-800" },
   resolvido: { label: "Resolvido", cor: "bg-green-100 text-green-800" },
   fechado: { label: "Fechado", cor: "bg-gray-100 text-gray-800" },
+  cancelado: { label: "Cancelado", cor: "bg-red-100 text-red-800" },
 }
 
 export function MeusChamadosPage() {
@@ -60,21 +61,43 @@ export function MeusChamadosPage() {
   const [chamadoParaCancelar, setChamadoParaCancelar] = useState<any | null>(null)
   const [equipamentosById, setEquipamentosById] = useState<Record<string, { nome: string; patrimonio?: string }>>({})
 
-  const enviarComentario = () => {
-    if (!novoComentario.trim() || !chamadoSelecionado) return
-    const comentario = {
-      acao: novoComentario.trim(),
-      data: new Date().toISOString(),
-      usuario: userData?.nome || "Você",
+  const enviarComentario = async () => {
+    if (!novoComentario.trim() || !chamadoSelecionado || !userData?.id) return
+    
+    try {
+      const res = await fetch(`/api/chamados/${chamadoSelecionado.id}/historico`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuario_id: userData.id,
+          acao: novoComentario.trim()
+        })
+      })
+      
+      if (!res.ok) throw new Error("Erro ao enviar comentário")
+      
+      const novoHist = await res.json()
+      
+      // Formatar para o frontend (o backend já retorna com nome do usuário se carregado, mas vamos garantir)
+      const comentarioFormatado = {
+        id: novoHist.id,
+        acao: novoHist.acao,
+        data: novoHist.data,
+        usuario: userData.nome || "Você"
+      }
+      
+      const atualizado = { 
+        ...chamadoSelecionado, 
+        historico: [...(chamadoSelecionado.historico || []), comentarioFormatado] 
+      }
+      
+      setChamadoSelecionado(atualizado)
+      setChamados(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
+      setNovoComentario("")
+      setModalComentario(false)
+    } catch (err) {
+      console.error(err)
     }
-    const atualizado = { 
-      ...chamadoSelecionado, 
-      historico: [...(chamadoSelecionado.historico || []), comentario] 
-    }
-    setChamadoSelecionado(atualizado)
-    setChamados(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
-    setNovoComentario("")
-    setModalComentario(false)
   }
 
   useEffect(() => {
@@ -317,8 +340,8 @@ export function MeusChamadosPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.cor}>
-                          {statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.label || chamado.status}
+                        <Badge className={statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.cor || "bg-gray-100 text-gray-800"}>
+                          {statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.label || (chamado.status ? (chamado.status.charAt(0).toUpperCase() + chamado.status.slice(1)) : "N/A")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -338,22 +361,13 @@ export function MeusChamadosPage() {
                           <Button 
                             variant="outline" 
                             size="icon" 
-                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-green-50 hover:border-[#7ac142]/50 transition-all hover:scale-110"
-                            title="Ver anexos" 
-                            disabled={(chamado?.anexos?.length ?? 0) === 0}
-                          >
-                            <Paperclip className="size-4 text-[#7ac142]" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
                             className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#1a3a5c]/30 transition-all hover:scale-110"
                             title="Comentar" 
                             onClick={() => abrirComentario(chamado)}
                           >
                             <MessageSquare className="size-4 text-[#1a3a5c]" />
                           </Button>
-                          {chamado.status !== "fechado" && chamado.status !== "resolvido" && (
+                          {chamado.status !== "fechado" && chamado.status !== "resolvido" && chamado.status !== "cancelado" && (
                             <Button 
                               variant="outline" 
                               size="icon" 
@@ -436,6 +450,12 @@ export function MeusChamadosPage() {
                       if (eq) return `${eq.nome}${eq.patrimonio ? ` (${eq.patrimonio})` : ""}`
                       return `ID ${id}`
                     })()}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Responsável</p>
+                  <p className="text-sm font-medium text-[#3ba5d8]">
+                    {chamadoSelecionado.atribuido_a_nome || "Aguardando Atribuição"}
                   </p>
                 </div>
                 <div className="space-y-1">

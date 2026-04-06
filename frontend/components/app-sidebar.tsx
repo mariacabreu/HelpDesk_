@@ -31,7 +31,7 @@ const menuItems = [
     id: "dashboard-suporte",
   },
   {
-    title: "Listar Chamados",
+    title: "Chamados Escalonados",
     icon: ClipboardList,
     id: "chamados",
   },
@@ -46,7 +46,7 @@ const menuItems = [
     id: "relatorios",
   },
   {
-    title: "Chamados Escalonados",
+    title: "Meus Atendimentos",
     icon: RefreshCw,
     id: "escalonados",
   },

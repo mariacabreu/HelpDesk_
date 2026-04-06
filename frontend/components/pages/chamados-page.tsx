@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,7 +27,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -35,76 +34,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, RotateCcw, Eye, UserPlus, RefreshCw, CheckCircle, Lock, MoreHorizontal, Clock, AlertTriangle } from "lucide-react"
-
-// Dados mock de chamados
-const chamadosMock = [
-  {
-    id: "CHM-001",
-    empresa: "Tech Solutions",
-    equipamento: "Desktop Dell Optiplex",
-    ip: "192.168.1.45",
-    prioridade: "alta",
-    status: "aberto",
-    sla: 2,
-    slaTotal: 4,
-    dataAbertura: "2024-01-15 09:30",
-    descricao: "Computador não liga após queda de energia",
-    imagem: null,
-  },
-  {
-    id: "CHM-002",
-    empresa: "Banco Central",
-    equipamento: "Servidor HP ProLiant",
-    ip: "10.0.0.10",
-    prioridade: "critica",
-    status: "em_atendimento",
-    sla: 0.5,
-    slaTotal: 2,
-    dataAbertura: "2024-01-15 08:00",
-    descricao: "Servidor de backup fora do ar",
-    imagem: null,
-  },
-  {
-    id: "CHM-003",
-    empresa: "Loja ABC",
-    equipamento: "Impressora Epson L3150",
-    ip: "192.168.2.20",
-    prioridade: "baixa",
-    status: "aberto",
-    sla: 6,
-    slaTotal: 8,
-    dataAbertura: "2024-01-14 14:00",
-    descricao: "Impressora não puxa papel corretamente",
-    imagem: null,
-  },
-  {
-    id: "CHM-004",
-    empresa: "Escritório XYZ",
-    equipamento: "Notebook Lenovo ThinkPad",
-    ip: "192.168.1.78",
-    prioridade: "media",
-    status: "escalado",
-    sla: 3,
-    slaTotal: 6,
-    dataAbertura: "2024-01-15 10:15",
-    descricao: "Tela azul frequente ao usar software contabil",
-    imagem: null,
-  },
-  {
-    id: "CHM-005",
-    empresa: "Hospital Regional",
-    equipamento: "Roteador Cisco",
-    ip: "10.10.0.1",
-    prioridade: "critica",
-    status: "resolvido",
-    sla: 1,
-    slaTotal: 1,
-    dataAbertura: "2024-01-14 23:45",
-    descricao: "Rede do setor de emergencia fora do ar",
-    imagem: null,
-  },
-]
+import { Search, RotateCcw, Eye, UserPlus, RefreshCw, CheckCircle, Lock, MoreHorizontal, Clock, AlertTriangle, Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -119,14 +50,16 @@ const statusColors: Record<string, string> = {
   escalado: "bg-purple-100 text-purple-700 border-purple-200",
   resolvido: "bg-green-100 text-green-700 border-green-200",
   fechado: "bg-gray-100 text-gray-700 border-gray-200",
+  cancelado: "bg-red-100 text-red-700 border-red-200",
 }
 
 const statusLabels: Record<string, string> = {
   aberto: "Aberto",
   em_atendimento: "Em Atendimento",
-  escalado: "Escalado",
+  escalado: "Escalonado",
   resolvido: "Resolvido",
   fechado: "Fechado",
+  cancelado: "Cancelado",
 }
 
 export function ChamadosPage() {
@@ -136,8 +69,88 @@ export function ChamadosPage() {
     prioridade: "",
     status: "",
   })
-  const [chamados, setChamados] = useState(chamadosMock)
-  const [chamadoSelecionado, setChamadoSelecionado] = useState<typeof chamadosMock[0] | null>(null)
+  const [chamados, setChamados] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [chamadoSelecionado, setChamadoSelecionado] = useState<any | null>(null)
+  const { toast } = useToast()
+  const [userData, setUserData] = useState<any>(null)
+
+  const fetchChamados = async () => {
+    const storedUser = localStorage.getItem("user")
+    if (!storedUser) return
+    const user = JSON.parse(storedUser)
+    
+    setLoading(true)
+    try {
+      // Se for suporte, buscar escalados disponíveis para o seu nível
+      const url = user.role === "suporte" 
+        ? `/api/chamados/escalados-disponiveis/${user.nivel || 'n1'}`
+        : "/api/chamados"
+        
+      const res = await fetch(url)
+      if (!res.ok) throw new Error("Erro ao buscar chamados")
+      const data = await res.json()
+      setChamados(data)
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Falha ao carregar chamados", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      setUserData(JSON.parse(storedUser))
+    }
+    fetchChamados()
+  }, [])
+
+  const assumirChamado = async (chamadoId: number) => {
+    if (!userData?.id) return
+    
+    try {
+      const res = await fetch(`/api/chamados/${chamadoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          atribuido_a_id: userData.id,
+          status: "em_atendimento"
+        })
+      })
+      
+      if (!res.ok) throw new Error("Erro ao assumir chamado")
+      
+      toast({ title: "Sucesso", description: "Você assumiu este chamado." })
+      fetchChamados()
+    } catch (err) {
+      toast({ title: "Erro", description: "Falha ao assumir chamado", variant: "destructive" })
+    }
+  }
+
+  const escalonarChamado = async (chamadoId: number) => {
+    if (!userData?.nivel) return
+    
+    try {
+      const res = await fetch(`/api/chamados/${chamadoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          escalonado_por_nivel: userData.nivel,
+          atribuido_a_id: null, // Volta para o pool
+          status: "escalado"
+        })
+      })
+      
+      if (!res.ok) throw new Error("Erro ao escalonar chamado")
+      
+      toast({ title: "Sucesso", description: "Chamado escalonado com sucesso." })
+      fetchChamados()
+    } catch (err) {
+      toast({ title: "Erro", description: "Falha ao escalonar chamado", variant: "destructive" })
+    }
+  }
 
   const limparFiltros = () => {
     setFiltros({
@@ -148,21 +161,24 @@ export function ChamadosPage() {
     })
   }
 
-  const getSlaIndicator = (sla: number, slaTotal: number) => {
-    const porcentagem = (sla / slaTotal) * 100
-    if (porcentagem <= 25) {
-      return <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200 gap-1"><AlertTriangle className="size-3" /> {sla}h restantes</Badge>
-    } else if (porcentagem <= 50) {
-      return <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 gap-1"><Clock className="size-3" /> {sla}h restantes</Badge>
-    }
-    return <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 gap-1"><Clock className="size-3" /> {sla}h restantes</Badge>
+  const chamadosFiltrados = chamados.filter(c => {
+    if (filtros.numero && !c.id.toString().includes(filtros.numero)) return false
+    if (filtros.empresa && !c.empresa_nome?.toLowerCase().includes(filtros.empresa.toLowerCase())) return false
+    if (filtros.prioridade && c.prioridade !== filtros.prioridade) return false
+    if (filtros.status && c.status !== filtros.status) return false
+    return true
+  })
+
+  const getSlaIndicator = (dataAbertura: string, prioridade: string) => {
+    // Lógica simplificada de SLA
+    return <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 gap-1"><Clock className="size-3" /> No prazo</Badge>
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Listar Chamados</h1>
-        <p className="text-muted-foreground">Gerencie todos os chamados de suporte</p>
+        <h1 className="text-2xl font-bold text-[#1a3a5c]">Chamados Escalonados</h1>
+        <p className="text-muted-foreground">Pool de chamados escalonados disponíveis para seu nível</p>
       </div>
 
       {/* Filtros */}
@@ -176,7 +192,7 @@ export function ChamadosPage() {
               <Label htmlFor="numero">Numero do Ticket</Label>
               <Input
                 id="numero"
-                placeholder="CHM-001"
+                placeholder="Ex: 15"
                 value={filtros.numero}
                 onChange={(e) => setFiltros({ ...filtros, numero: e.target.value })}
               />
@@ -224,7 +240,7 @@ export function ChamadosPage() {
             </div>
 
             <div className="flex items-end gap-4">
-              <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2">
+              <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2" onClick={fetchChamados}>
                 <Search className="size-4" />
                 Filtrar
               </Button>
@@ -240,83 +256,87 @@ export function ChamadosPage() {
       {/* Tabela de Chamados */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#1a3a5c]/5">
-                <TableHead className="font-semibold text-[#1a3a5c]">N Chamado</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Empresa</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Equipamento / IP</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Prioridade</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Status</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">SLA</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Data/Hora</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Descricao</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c] text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {chamados.map((chamado) => (
-                <TableRow key={chamado.id} className="hover:bg-[#3ba5d8]/5">
-                  <TableCell className="font-medium text-[#1a3a5c]">{chamado.id}</TableCell>
-                  <TableCell>{chamado.empresa}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm">{chamado.equipamento}</span>
-                      <span className="text-xs text-muted-foreground">{chamado.ip}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={prioridadeColors[chamado.prioridade]}>
-                      {chamado.prioridade.charAt(0).toUpperCase() + chamado.prioridade.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={statusColors[chamado.status]}>
-                      {statusLabels[chamado.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{getSlaIndicator(chamado.sla, chamado.slaTotal)}</TableCell>
-                  <TableCell className="text-sm">{chamado.dataAbertura}</TableCell>
-                  <TableCell className="max-w-[200px] truncate text-sm">{chamado.descricao}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setChamadoSelecionado(chamado); }}>
-                              <Eye className="size-4 mr-2" />
-                              Visualizar
-                            </DropdownMenuItem>
-                          </DialogTrigger>
-                        </Dialog>
-                        <DropdownMenuItem>
-                          <UserPlus className="size-4 mr-2" />
-                          Assumir chamado
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <RefreshCw className="size-4 mr-2" />
-                          Escalonar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <CheckCircle className="size-4 mr-2" />
-                          Registrar solucao
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Lock className="size-4 mr-2" />
-                          Encerrar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="size-8 animate-spin text-[#3ba5d8]" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[#1a3a5c]/5">
+                  <TableHead className="font-semibold text-[#1a3a5c]">N Chamado</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Empresa</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Equipamento</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Prioridade</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Status</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">SLA</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Data/Hora</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] text-right">Acoes</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {chamadosFiltrados.map((chamado) => (
+                  <TableRow key={chamado.id} className="hover:bg-[#3ba5d8]/5">
+                    <TableCell className="font-medium text-[#1a3a5c]">CH-{chamado.id}</TableCell>
+                    <TableCell>{chamado.empresa_nome}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{chamado.equipamento_nome || "N/A"}</span>
+                        <span className="text-xs text-muted-foreground">{chamado.equipamento_patrimonio}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={prioridadeColors[chamado.prioridade] || ""}>
+                        {chamado.prioridade ? (chamado.prioridade.charAt(0).toUpperCase() + chamado.prioridade.slice(1)) : "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={statusColors[chamado.status] || ""}>
+                        {statusLabels[chamado.status] || chamado.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{getSlaIndicator(chamado.data_abertura, chamado.prioridade)}</TableCell>
+                    <TableCell className="text-sm">{new Date(chamado.data_abertura).toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setChamadoSelecionado(chamado)}>
+                            <Eye className="size-4 mr-2" />
+                            Visualizar
+                          </DropdownMenuItem>
+                          {!chamado.atribuido_a_id && (
+                            <DropdownMenuItem onClick={() => assumirChamado(chamado.id)}>
+                              <UserPlus className="size-4 mr-2" />
+                              Assumir chamado
+                            </DropdownMenuItem>
+                          )}
+                          {chamado.atribuido_a_id === userData?.id && (
+                            <DropdownMenuItem onClick={() => escalonarChamado(chamado.id)}>
+                              <RefreshCw className="size-4 mr-2" />
+                              Escalonar
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem>
+                            <CheckCircle className="size-4 mr-2" />
+                            Registrar solucao
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Lock className="size-4 mr-2" />
+                            Encerrar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -324,42 +344,54 @@ export function ChamadosPage() {
       <Dialog open={!!chamadoSelecionado} onOpenChange={(open) => !open && setChamadoSelecionado(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado {chamadoSelecionado?.id}</DialogTitle>
+            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado CH-{chamadoSelecionado?.id}</DialogTitle>
             <DialogDescription>Informacoes completas do chamado</DialogDescription>
           </DialogHeader>
           {chamadoSelecionado && (
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Empresa</Label>
-                <p className="font-medium">{chamadoSelecionado.empresa}</p>
+                <p className="font-medium">{chamadoSelecionado.empresa_nome}</p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-muted-foreground text-xs">Solicitante</Label>
+                <p className="font-medium">{chamadoSelecionado.solicitante_nome}</p>
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Equipamento</Label>
-                <p className="font-medium">{chamadoSelecionado.equipamento}</p>
+                <p className="font-medium">{chamadoSelecionado.equipamento_nome || "N/A"}</p>
               </div>
               <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">IP</Label>
-                <p className="font-medium">{chamadoSelecionado.ip}</p>
+                <Label className="text-muted-foreground text-xs">Patrimônio</Label>
+                <p className="font-medium">{chamadoSelecionado.equipamento_patrimonio || "N/A"}</p>
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Prioridade</Label>
-                <Badge variant="outline" className={prioridadeColors[chamadoSelecionado.prioridade]}>
-                  {chamadoSelecionado.prioridade.charAt(0).toUpperCase() + chamadoSelecionado.prioridade.slice(1)}
+                <Badge variant="outline" className={prioridadeColors[chamadoSelecionado.prioridade] || ""}>
+                  {chamadoSelecionado.prioridade ? (chamadoSelecionado.prioridade.charAt(0).toUpperCase() + chamadoSelecionado.prioridade.slice(1)) : "N/A"}
                 </Badge>
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Status</Label>
-                <Badge variant="outline" className={statusColors[chamadoSelecionado.status]}>
-                  {statusLabels[chamadoSelecionado.status]}
+                <Badge variant="outline" className={statusColors[chamadoSelecionado.status] || ""}>
+                  {statusLabels[chamadoSelecionado.status] || chamadoSelecionado.status}
                 </Badge>
               </div>
               <div className="flex flex-col gap-1">
+                <Label className="text-muted-foreground text-xs">Responsável</Label>
+                <p className="font-medium text-[#3ba5d8]">{chamadoSelecionado.atribuido_a_nome || "Aguardando Atribuição"}</p>
+              </div>
+              <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Data de Abertura</Label>
-                <p className="font-medium">{chamadoSelecionado.dataAbertura}</p>
+                <p className="font-medium">{new Date(chamadoSelecionado.data_abertura).toLocaleString()}</p>
+              </div>
+              <div className="col-span-2 flex flex-col gap-1">
+                <Label className="text-muted-foreground text-xs">Titulo</Label>
+                <p className="font-medium">{chamadoSelecionado.titulo}</p>
               </div>
               <div className="col-span-2 flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Descricao</Label>
-                <p className="font-medium">{chamadoSelecionado.descricao}</p>
+                <p className="font-medium bg-gray-50 p-3 rounded-lg">{chamadoSelecionado.descricao}</p>
               </div>
             </div>
           )}

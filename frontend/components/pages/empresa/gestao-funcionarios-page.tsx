@@ -14,14 +14,14 @@ import { formatDateShort } from "@/lib/utils"
 import { toast } from "sonner"
 import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle } from "lucide-react"
 
-const statusConfig = {
-  ativo: { label: "Ativo", cor: "bg-green-100 text-green-800" },
-  inativo: { label: "Inativo", cor: "bg-red-100 text-red-800" },
+const statusConfig: Record<string, { label: string; cor: string }> = {
+  ativo: { label: "Ativo", cor: "bg-green-100 text-green-800 border-green-200" },
+  inativo: { label: "Inativo", cor: "bg-red-100 text-red-800 border-red-200" },
 }
 
-const permissaoConfig = {
-  admin: { label: "Administrador", cor: "bg-purple-100 text-purple-800" },
-  usuario: { label: "Usuário", cor: "bg-blue-100 text-blue-800" },
+const permissaoConfig: Record<string, { label: string; cor: string }> = {
+  admin: { label: "Administrador", cor: "bg-purple-100 text-purple-800 border-purple-200" },
+  usuario: { label: "Usuário", cor: "bg-blue-100 text-blue-800 border-blue-200" },
 }
 
 const nivelConfig: Record<string, string> = {
@@ -384,27 +384,27 @@ export function GestaoFuncionariosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Funcionário</TableHead>
-                  <TableHead className="w-[200px]">E-mail</TableHead>
-                  <TableHead className="w-[150px]">Cargo</TableHead>
-                  <TableHead className="w-[100px]">Nível</TableHead>
-                  <TableHead className="w-[120px]">Departamento</TableHead>
-                  <TableHead className="w-[120px]">Permissão</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="w-[140px] text-right">Ações</TableHead>
+                  <TableHead className="border border-[#1a3a5c]/10">Funcionário</TableHead>
+                  <TableHead className="w-[200px] border border-[#1a3a5c]/10">E-mail</TableHead>
+                  <TableHead className="w-[150px] border border-[#1a3a5c]/10">Cargo</TableHead>
+                  <TableHead className="w-[100px] border border-[#1a3a5c]/10">Nível</TableHead>
+                  <TableHead className="w-[120px] border border-[#1a3a5c]/10">Departamento</TableHead>
+                  <TableHead className="w-[120px] border border-[#1a3a5c]/10">Permissão</TableHead>
+                  <TableHead className="w-[100px] border border-[#1a3a5c]/10">Status</TableHead>
+                  <TableHead className="w-[140px] text-right border border-[#1a3a5c]/10">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground border border-[#1a3a5c]/10">
                       Carregando funcionários...
                     </TableCell>
                   </TableRow>
                 ) : funcionariosFiltrados.length > 0 ? (
                   funcionariosFiltrados.map((funcionario) => (
                     <TableRow key={funcionario.id}>
-                      <TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
                         <div className="flex items-center gap-3">
                           <Avatar className="size-8">
                             <AvatarFallback className="bg-[#3ba5d8] text-white text-xs">
@@ -414,25 +414,25 @@ export function GestaoFuncionariosPage() {
                           <span className="font-medium">{funcionario.nome}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{funcionario.email}</TableCell>
-                      <TableCell>{funcionario.cargo}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm text-muted-foreground border border-[#1a3a5c]/10">{funcionario.email}</TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">{funcionario.cargo}</TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
                         <Badge variant="outline" className="font-mono text-[10px] uppercase">
                           {funcionario.nivel || "N1"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{funcionario.setor}</TableCell>
-                      <TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">{funcionario.setor}</TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
                         <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.cor || "bg-blue-100 text-blue-800"}>
-                          {funcionario.permissao === "admin" ? "Administrador" : "Usuário"}
+                          {permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.label || "Usuário"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
                         <Badge className={statusConfig[funcionario.status as keyof typeof statusConfig]?.cor || "bg-green-100 text-green-800"}>
-                          {funcionario.status === "inativo" ? "Inativo" : "Ativo"}
+                          {statusConfig[funcionario.status as keyof typeof statusConfig]?.label || "Ativo"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right border border-[#1a3a5c]/10">
                         <div className="flex justify-end gap-2">
                           <Button 
                             variant="outline" 

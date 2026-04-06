@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Search, RotateCcw, Info, Plus } from "lucide-react"
+import { Search, RotateCcw, Info, Plus, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 // Dados mock de equipamentos
@@ -263,52 +263,6 @@ export function EquipamentosPage() {
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Equipamentos</h1>
           <p className="text-muted-foreground">Gerencie todos os equipamentos cadastrados</p>
         </div>
-        <Dialog open={openNovo} onOpenChange={setOpenNovo}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#7ac142] hover:bg-[#6ab032] gap-2">
-              <Plus className="size-4" />
-              Adicionar Equipamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-[#1a3a5c]">Cadastrar Equipamento</DialogTitle>
-              <DialogDescription>Informe os dados do equipamento</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-2">
-              <div className="space-y-1">
-                <Label>Nome</Label>
-                <Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Notebook Dell Latitude" />
-              </div>
-              <div className="space-y-1">
-                <Label>Patrimônio</Label>
-                <Input value={form.patrimonio} onChange={e => setForm({ ...form, patrimonio: e.target.value })} placeholder="Ex: NB-001" />
-              </div>
-              <div className="space-y-1">
-                <Label>Tipo</Label>
-                <Input value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })} placeholder="Notebook, Desktop..." />
-              </div>
-              <div className="space-y-1">
-                <Label>Marca</Label>
-                <Input value={form.marca} onChange={e => setForm({ ...form, marca: e.target.value })} placeholder="Dell, HP..." />
-              </div>
-              <div className="space-y-1">
-                <Label>Modelo</Label>
-                <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} placeholder="Latitude 3420" />
-              </div>
-              <div className="space-y-1">
-                <Label>Número de Série</Label>
-                <Input value={form.numero_serie} onChange={e => setForm({ ...form, numero_serie: e.target.value })} placeholder="ABC123XYZ" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setOpenNovo(false)}>Cancelar</Button>
-              <Button className="bg-[#1a3a5c]" onClick={cadastrarEquipamento} disabled={saving}>
-                {saving ? "Cadastrando..." : "Cadastrar"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Filtros */}
@@ -391,125 +345,127 @@ export function EquipamentosPage() {
       {/* Tabela de Equipamentos */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#1a3a5c]/5">
-                <TableHead className="font-semibold text-[#1a3a5c]">N Patrimonio</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Empresa</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Tipo</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Marca / Modelo</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">N de Serie</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Localizacao</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Status</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Chamados</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Ultima Manut.</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">IP</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c] text-right">Detalhes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lista.map((equipamento) => (
-                <TableRow key={equipamento.id} className="hover:bg-[#3ba5d8]/5">
-                  <TableCell className="font-medium text-[#1a3a5c]">{equipamento.patrimonio}</TableCell>
-                  <TableCell>{equipamento.empresa}</TableCell>
-                  <TableCell>{equipamento.tipo}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm">{equipamento.marca}</span>
-                      <span className="text-xs text-muted-foreground">{equipamento.modelo}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm font-mono">{equipamento.numSerie}</TableCell>
-                  <TableCell className="text-sm">{equipamento.localizacao}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={statusColors[equipamento.status]}>
-                      {statusLabels[equipamento.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      {equipamento.chamadosVinculados}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{equipamento.ultimaManutencao}</TableCell>
-                  <TableCell className="text-sm font-mono">{equipamento.ip}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEquipamentoSelecionado(equipamento)}
-                          className="gap-1"
-                        >
-                          <Info className="size-4" />
-                          Descricao
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle className="text-[#1a3a5c]">
-                            Detalhes do Equipamento - {equipamento.patrimonio}
-                          </DialogTitle>
-                          <DialogDescription>Informacoes completas do equipamento</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Empresa</Label>
-                            <p className="font-medium">{equipamento.empresa}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Tipo</Label>
-                            <p className="font-medium">{equipamento.tipo}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Marca</Label>
-                            <p className="font-medium">{equipamento.marca}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Modelo</Label>
-                            <p className="font-medium">{equipamento.modelo}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">N de Serie</Label>
-                            <p className="font-medium font-mono">{equipamento.numSerie}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Patrimonio</Label>
-                            <p className="font-medium">{equipamento.patrimonio}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Sistema Operacional</Label>
-                            <p className="font-medium">{equipamento.so}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Endereco MAC</Label>
-                            <p className="font-medium font-mono">{equipamento.mac}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">IP</Label>
-                            <p className="font-medium font-mono">{equipamento.ip}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Localizacao Fisica</Label>
-                            <p className="font-medium">{equipamento.localizacao}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Data de Aquisicao</Label>
-                            <p className="font-medium">{equipamento.dataAquisicao}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-muted-foreground text-xs">Garantia (Inicio / Fim)</Label>
-                            <p className="font-medium">{equipamento.garantiaInicio} ate {equipamento.garantiaFim}</p>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[#1a3a5c]/5">
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">N Patrimonio</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Empresa</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Tipo</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Marca / Modelo</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">N de Serie</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Localizacao</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamados</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Ultima Manut.</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">IP</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {lista.map((equipamento) => (
+                  <TableRow key={equipamento.id} className="hover:bg-[#3ba5d8]/5">
+                    <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">{equipamento.patrimonio}</TableCell>
+                    <TableCell className="border border-[#1a3a5c]/10">{equipamento.empresa}</TableCell>
+                    <TableCell className="border border-[#1a3a5c]/10">{equipamento.tipo}</TableCell>
+                    <TableCell className="border border-[#1a3a5c]/10">
+                      <div className="flex flex-col">
+                        <span className="text-sm">{equipamento.marca}</span>
+                        <span className="text-xs text-muted-foreground">{equipamento.modelo}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.numSerie}</TableCell>
+                    <TableCell className="text-sm border border-[#1a3a5c]/10">{equipamento.localizacao}</TableCell>
+                    <TableCell className="border border-[#1a3a5c]/10">
+                      <Badge variant="outline" className={statusColors[equipamento.status]}>
+                        {statusLabels[equipamento.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center border border-[#1a3a5c]/10">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {equipamento.chamadosVinculados}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm border border-[#1a3a5c]/10">{equipamento.ultimaManutencao}</TableCell>
+                    <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.ip}</TableCell>
+                    <TableCell className="text-right border border-[#1a3a5c]/10">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setEquipamentoSelecionado(equipamento)}
+                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                            title="Visualizar Descrição"
+                          >
+                            <Eye className="size-4 text-[#3ba5d8]" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle className="text-[#1a3a5c]">
+                              Detalhes do Equipamento - {equipamento.patrimonio}
+                            </DialogTitle>
+                            <DialogDescription>Informacoes completas do equipamento</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid grid-cols-2 gap-4 py-4">
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Empresa</Label>
+                              <p className="font-medium">{equipamento.empresa}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Tipo</Label>
+                              <p className="font-medium">{equipamento.tipo}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Marca</Label>
+                              <p className="font-medium">{equipamento.marca}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Modelo</Label>
+                              <p className="font-medium">{equipamento.modelo}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">N de Serie</Label>
+                              <p className="font-medium font-mono">{equipamento.numSerie}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Patrimonio</Label>
+                              <p className="font-medium">{equipamento.patrimonio}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Sistema Operacional</Label>
+                              <p className="font-medium">{equipamento.so}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Endereco MAC</Label>
+                              <p className="font-medium font-mono">{equipamento.mac}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">IP</Label>
+                              <p className="font-medium font-mono">{equipamento.ip}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Localizacao Fisica</Label>
+                              <p className="font-medium">{equipamento.localizacao}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Data de Aquisicao</Label>
+                              <p className="font-medium">{equipamento.dataAquisicao}</p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-muted-foreground text-xs">Garantia (Inicio / Fim)</Label>
+                              <p className="font-medium">{equipamento.garantiaInicio} ate {equipamento.garantiaFim}</p>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

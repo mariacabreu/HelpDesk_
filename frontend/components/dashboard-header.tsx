@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bell, User, LogOut, Settings, HelpCircle, Mail, Phone, Building, Shield, BellRing, Palette, Globe, Lock } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -27,25 +27,63 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 
 interface DashboardHeaderProps {
+  userId?: number
   userName?: string
   userEmail?: string
   userCargo?: string
-  notificationCount?: number
   userRole?: "suporte" | "empresa"
   onRoleChange?: (role: "suporte" | "empresa") => void
 }
 
 export function DashboardHeader({
+  userId,
   userName = "João Silva",
   userEmail = "joao.silva@empresa.com",
   userCargo = "Suporte N1",
-  notificationCount = 3,
   userRole = "suporte",
   onRoleChange,
 }: DashboardHeaderProps) {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  const fetchNotifications = async () => {
+    if (!userId) return
+    try {
+      const res = await fetch(`/api/notificacoes/${userId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data)
+        setNotificationCount(data.length)
+      }
+    } catch (err) {
+      console.error("Erro ao buscar notificações:", err)
+    }
+  }
+
+  const handleClearNotifications = async () => {
+    if (!userId || notificationCount === 0) return
+    try {
+      const res = await fetch(`/api/notificacoes/ler-todas/${userId}`, {
+        method: "PATCH"
+      })
+      if (res.ok) {
+        setNotificationCount(0)
+        // Não limpamos o array de notificações imediatamente para que o usuário 
+        // possa vê-las no menu que acabou de abrir.
+      }
+    } catch (err) {
+      console.error("Erro ao limpar notificações:", err)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 5000) // Poll every 5 seconds
+    return () => clearInterval(interval)
+  }, [userId])
 
   return (
     <>
@@ -59,7 +97,7 @@ export function DashboardHeader({
 
         <div className="flex items-center gap-2 lg:gap-4">
           {/* Notificações */}
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => open && handleClearNotifications()}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -75,25 +113,21 @@ export function DashboardHeader({
                 <span className="sr-only">Notificações</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel>Notificações</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start gap-1 cursor-pointer">
-                <span className="font-medium text-sm">Novo chamado atribuído</span>
-                <span className="text-xs text-muted-foreground">Chamado #1234 - Problema com impressora</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 cursor-pointer">
-                <span className="font-medium text-sm">Chamado escalonado</span>
-                <span className="text-xs text-muted-foreground">Chamado #1220 foi escalonado para N2</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 cursor-pointer">
-                <span className="font-medium text-sm">SLA próximo do vencimento</span>
-                <span className="text-xs text-muted-foreground">Chamado #1210 vence em 2 horas</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-center text-[#3ba5d8] cursor-pointer">
-                Ver todas as notificações
-              </DropdownMenuItem>
+              {notifications.length > 0 ? (
+                notifications.map((notif) => (
+                  <DropdownMenuItem key={notif.id} className="flex flex-col items-start gap-1 cursor-default p-4">
+                    <span className="font-medium text-sm leading-tight">{notif.mensagem}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(notif.data).toLocaleString()}</span>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Sem novas notificações.
+                </div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

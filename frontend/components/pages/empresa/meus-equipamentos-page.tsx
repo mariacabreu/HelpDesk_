@@ -237,10 +237,6 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Meus Equipamentos</h1>
           <p className="text-muted-foreground">Gerencie os equipamentos da sua empresa</p>
         </div>
-        <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={() => setModalCadastro(true)}>
-          <Plus className="size-4 mr-2" />
-          Cadastrar Equipamento
-        </Button>
       </div>
 
       {/* Filtros */}

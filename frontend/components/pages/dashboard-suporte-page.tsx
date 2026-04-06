@@ -1,90 +1,105 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   ClipboardList,
   Clock,
   CheckCircle2,
   AlertTriangle,
   TrendingUp,
-  User,
-  Users,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 
-const stats = [
-  {
-    title: "Chamados Abertos",
-    value: "12",
-    description: "Aguardando atendimento",
-    icon: ClipboardList,
-    color: "text-[#3ba5d8]",
-    bgColor: "bg-[#3ba5d8]/10",
-  },
-  {
-    title: "Em Andamento",
-    value: "5",
-    description: "Sendo atendidos",
-    icon: Clock,
-    color: "text-[#f59e0b]",
-    bgColor: "bg-[#f59e0b]/10",
-  },
-  {
-    title: "Resolvidos Hoje",
-    value: "8",
-    description: "Finalizados com sucesso",
-    icon: CheckCircle2,
-    color: "text-[#7ac142]",
-    bgColor: "bg-[#7ac142]/10",
-  },
-  {
-    title: "SLA Crítico",
-    value: "2",
-    description: "Atenção necessária",
-    icon: AlertTriangle,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-  },
-]
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Eye } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-const recentTickets = [
-  {
-    id: "#1234",
-    title: "Problema com impressora",
-    company: "Tech Solutions",
-    priority: "Alta",
-    status: "Aberto",
-    sla: "2h restantes",
-  },
-  {
-    id: "#1233",
-    title: "Instalação de software",
-    company: "Gourmet Garden",
-    priority: "Média",
-    status: "Em andamento",
-    sla: "4h restantes",
-  },
-  {
-    id: "#1232",
-    title: "Acesso ao sistema",
-    company: "Mega Store",
-    priority: "Baixa",
-    status: "Aberto",
-    sla: "8h restantes",
-  },
-]
+const prioridadeConfig: Record<string, { label: string; cor: string }> = {
+  baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
+  media: { label: "Média", cor: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  alta: { label: "Alta", cor: "bg-red-100 text-red-800 border-red-200" },
+  critica: { label: "Crítica", cor: "bg-red-200 text-red-900 border-red-300" },
+}
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "Alta": return "bg-red-100 text-red-700 border-red-200"
-    case "Média": return "bg-yellow-100 text-yellow-700 border-yellow-200"
-    case "Baixa": return "bg-green-100 text-green-700 border-green-200"
-    default: return "bg-gray-100 text-gray-700 border-gray-200"
-  }
+const statusConfig: Record<string, { label: string; cor: string }> = {
+  aberto: { label: "Aberto", cor: "bg-blue-100 text-blue-800" },
+  em_atendimento: { label: "Em Atendimento", cor: "bg-purple-100 text-purple-800" },
+  escalado: { label: "Escalonado", cor: "bg-orange-100 text-orange-800" },
+  resolvido: { label: "Resolvido", cor: "bg-green-100 text-green-800" },
+  fechado: { label: "Fechado", cor: "bg-gray-100 text-gray-800" },
+  cancelado: { label: "Cancelado", cor: "bg-red-100 text-red-800" },
 }
 
 export function DashboardSuportePage() {
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/stats/suporte")
+      .then(res => res.json())
+      .then(data => {
+        setStats(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <Loader2 className="size-8 animate-spin text-[#3ba5d8]" />
+      </div>
+    )
+  }
+
+  const statCards = [
+    {
+      title: "Chamados Abertos",
+      value: stats?.abertos || 0,
+      description: "Aguardando atendimento",
+      icon: ClipboardList,
+      color: "text-[#3ba5d8]",
+      bgColor: "bg-[#3ba5d8]/10",
+    },
+    {
+      title: "Em Andamento",
+      value: stats?.em_andamento || 0,
+      description: "Sendo atendidos",
+      icon: Clock,
+      color: "text-[#f59e0b]",
+      bgColor: "bg-[#f59e0b]/10",
+    },
+    {
+      title: "Resolvidos",
+      value: stats?.resolvidos || 0,
+      description: "Finalizados com sucesso",
+      icon: CheckCircle2,
+      color: "text-[#7ac142]",
+      bgColor: "bg-[#7ac142]/10",
+    },
+    {
+      title: "SLA Crítico",
+      value: "0",
+      description: "Atenção necessária",
+      icon: AlertTriangle,
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -93,7 +108,7 @@ export function DashboardSuportePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -117,26 +132,60 @@ export function DashboardSuportePage() {
             <CardTitle className="text-[#1a3a5c]">Chamados Recentes</CardTitle>
             <CardDescription>Últimas solicitações recebidas</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="space-y-4">
-              {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-4 bg-white border rounded-xl hover:shadow-sm transition-shadow">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-semibold text-[#3ba5d8]">{ticket.id}</span>
-                    <span className="font-medium text-[#1a3a5c]">{ticket.title}</span>
-                    <span className="text-xs text-muted-foreground">{ticket.company}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
-                      {ticket.priority}
-                    </Badge>
-                    <div className="text-right">
-                        <p className="text-xs font-medium text-muted-foreground">SLA</p>
-                        <p className="text-xs text-red-500 font-bold">{ticket.sla}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#1a3a5c]/5">
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">ID</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamado</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Cliente</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Prioridade</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Data</TableHead>
+                      <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(stats?.recentes || []).map((ticket: any) => (
+                      <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
+                        <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">
+                          CH-{ticket.id.toString().padStart(3, '0')}
+                        </TableCell>
+                        <TableCell className="font-medium border border-[#1a3a5c]/10">
+                          {ticket.titulo}
+                        </TableCell>
+                        <TableCell className="border border-[#1a3a5c]/10">
+                          {ticket.empresa || "N/A"}
+                        </TableCell>
+                        <TableCell className="border border-[#1a3a5c]/10">
+                          <Badge variant="outline" className={prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"}>
+                            {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="border border-[#1a3a5c]/10">
+                          <Badge className={statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"}>
+                            {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm border border-[#1a3a5c]/10">
+                          {new Date(ticket.data_abertura || Date.now()).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right border border-[#1a3a5c]/10">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="size-9"
+                          >
+                            <Eye className="size-4 text-[#3ba5d8]" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -165,8 +214,8 @@ export function DashboardSuportePage() {
                 <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                     <TrendingUp className="size-5 text-blue-600" />
                     <div>
-                        <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Média Mensal</p>
-                        <p className="text-lg font-bold text-[#1a3a5c]">145 Chamados</p>
+                        <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total Resolvidos</p>
+                        <p className="text-lg font-bold text-[#1a3a5c]">{stats?.resolvidos || 0} Chamados</p>
                     </div>
                 </div>
             </div>

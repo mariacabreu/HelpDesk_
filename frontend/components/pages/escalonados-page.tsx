@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,7 +27,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -35,73 +34,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, RotateCcw, Eye, History, RefreshCw, CheckCircle, MoreHorizontal, ArrowUpRight } from "lucide-react"
-
-// Dados mock de chamados escalonados
-const escalonadosMock = [
-  {
-    id: "CHM-002",
-    chamado: "Servidor de backup fora do ar",
-    cliente: "Banco Central",
-    prioridade: "critica",
-    nivelAtual: "N3",
-    escalonadoDe: "N2",
-    data: "2024-01-15 08:30",
-    status: "em_atendimento",
-    tecnicoResponsavel: "Carlos Mendes",
-    historico: [
-      { nivel: "N1", tecnico: "Joao Silva", data: "2024-01-15 08:00", acao: "Abertura do chamado" },
-      { nivel: "N2", tecnico: "Maria Santos", data: "2024-01-15 08:15", acao: "Escalonado - Problema complexo de hardware" },
-      { nivel: "N3", tecnico: "Carlos Mendes", data: "2024-01-15 08:30", acao: "Escalonado - Necessario acesso fisico ao servidor" },
-    ]
-  },
-  {
-    id: "CHM-004",
-    chamado: "Tela azul frequente ao usar software contabil",
-    cliente: "Escritorio XYZ",
-    prioridade: "media",
-    nivelAtual: "N2",
-    escalonadoDe: "N1",
-    data: "2024-01-15 11:00",
-    status: "em_atendimento",
-    tecnicoResponsavel: "Maria Santos",
-    historico: [
-      { nivel: "N1", tecnico: "Pedro Costa", data: "2024-01-15 10:15", acao: "Abertura do chamado" },
-      { nivel: "N2", tecnico: "Maria Santos", data: "2024-01-15 11:00", acao: "Escalonado - Conflito de drivers" },
-    ]
-  },
-  {
-    id: "CHM-008",
-    chamado: "Falha de autenticacao no Active Directory",
-    cliente: "Tech Solutions",
-    prioridade: "alta",
-    nivelAtual: "N3",
-    escalonadoDe: "N1",
-    data: "2024-01-14 16:45",
-    status: "em_atendimento",
-    tecnicoResponsavel: "Carlos Mendes",
-    historico: [
-      { nivel: "N1", tecnico: "Ana Oliveira", data: "2024-01-14 14:30", acao: "Abertura do chamado" },
-      { nivel: "N2", tecnico: "Maria Santos", data: "2024-01-14 15:30", acao: "Escalonado - Problema de GPO" },
-      { nivel: "N3", tecnico: "Carlos Mendes", data: "2024-01-14 16:45", acao: "Escalonado - Requer acesso ao domain controller" },
-    ]
-  },
-  {
-    id: "CHM-012",
-    chamado: "VPN nao conecta em notebooks remotos",
-    cliente: "Hospital Regional",
-    prioridade: "alta",
-    nivelAtual: "N2",
-    escalonadoDe: "N1",
-    data: "2024-01-15 09:00",
-    status: "aberto",
-    tecnicoResponsavel: "Pedro Costa",
-    historico: [
-      { nivel: "N1", tecnico: "Joao Silva", data: "2024-01-15 08:30", acao: "Abertura do chamado" },
-      { nivel: "N2", tecnico: "Pedro Costa", data: "2024-01-15 09:00", acao: "Escalonado - Configuracao de firewall" },
-    ]
-  },
-]
+import { Search, RotateCcw, Eye, Clock, Loader2, RefreshCw, CheckCircle, Lock, MoreHorizontal } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -110,50 +44,99 @@ const prioridadeColors: Record<string, string> = {
   critica: "bg-red-100 text-red-700 border-red-200",
 }
 
-const nivelColors: Record<string, string> = {
-  N1: "bg-blue-100 text-blue-700 border-blue-200",
-  N2: "bg-purple-100 text-purple-700 border-purple-200",
-  N3: "bg-red-100 text-red-700 border-red-200",
-}
-
 const statusColors: Record<string, string> = {
   aberto: "bg-blue-100 text-blue-700 border-blue-200",
   em_atendimento: "bg-yellow-100 text-yellow-700 border-yellow-200",
   resolvido: "bg-green-100 text-green-700 border-green-200",
+  escalado: "bg-purple-100 text-purple-700 border-purple-200",
+  cancelado: "bg-red-100 text-red-700 border-red-200",
 }
 
 const statusLabels: Record<string, string> = {
   aberto: "Aberto",
   em_atendimento: "Em Atendimento",
   resolvido: "Resolvido",
+  escalado: "Escalonado",
+  cancelado: "Cancelado",
 }
 
 export function EscalonadosPage() {
   const [filtros, setFiltros] = useState({
     periodo: "",
-    nivelOrigem: "",
-    nivelAtual: "",
     prioridade: "",
-    tecnico: "",
   })
-  const [historicoAberto, setHistoricoAberto] = useState<typeof escalonadosMock[0] | null>(null)
-  const [detalhesAberto, setDetalhesAberto] = useState<typeof escalonadosMock[0] | null>(null)
+  const [chamados, setChamados] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [detalhesAberto, setDetalhesAberto] = useState<any | null>(null)
+  const { toast } = useToast()
+  const [userData, setUserData] = useState<any>(null)
+
+  const fetchEscalonados = async () => {
+    const storedUser = localStorage.getItem("user")
+    if (!storedUser) return
+    
+    const user = JSON.parse(storedUser)
+    setUserData(user)
+    
+    setLoading(true)
+    try {
+      // Buscar chamados atribuídos a este técnico
+      const res = await fetch(`/api/chamados/atribuido/${user.id}`)
+      if (!res.ok) throw new Error("Erro ao buscar chamados")
+      const data = await res.json()
+      setChamados(data)
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Falha ao carregar chamados escalonados", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const escalonarChamado = async (chamadoId: number) => {
+    if (!userData?.nivel) return
+    
+    try {
+      const res = await fetch(`/api/chamados/${chamadoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          escalonado_por_nivel: userData.nivel,
+          atribuido_a_id: null, // Volta para o pool
+          status: "escalado"
+        })
+      })
+      
+      if (!res.ok) throw new Error("Erro ao escalonar chamado")
+      
+      toast({ title: "Sucesso", description: "Chamado escalonado com sucesso." })
+      fetchEscalonados()
+    } catch (err) {
+      toast({ title: "Erro", description: "Falha ao escalonar chamado", variant: "destructive" })
+    }
+  }
+
+  useEffect(() => {
+    fetchEscalonados()
+  }, [])
 
   const limparFiltros = () => {
     setFiltros({
       periodo: "",
-      nivelOrigem: "",
-      nivelAtual: "",
       prioridade: "",
-      tecnico: "",
     })
   }
+
+  const chamadosFiltrados = chamados.filter(c => {
+    if (filtros.prioridade && c.prioridade !== filtros.prioridade) return false
+    return true
+  })
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Chamados Escalonados</h1>
-        <p className="text-muted-foreground">Chamados que foram transferidos entre niveis de suporte</p>
+        <h1 className="text-2xl font-bold text-[#1a3a5c]">Meus Atendimentos</h1>
+        <p className="text-muted-foreground">Chamados que estão sob sua responsabilidade</p>
       </div>
 
       {/* Filtros */}
@@ -162,7 +145,7 @@ export function EscalonadosPage() {
           <CardTitle className="text-lg">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="periodo">Periodo</Label>
               <Input
@@ -171,32 +154,6 @@ export function EscalonadosPage() {
                 value={filtros.periodo}
                 onChange={(e) => setFiltros({ ...filtros, periodo: e.target.value })}
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label>Nivel de Origem</Label>
-              <Select value={filtros.nivelOrigem} onValueChange={(value) => setFiltros({ ...filtros, nivelOrigem: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N1">N1</SelectItem>
-                  <SelectItem value="N2">N2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label>Nivel Atual</Label>
-              <Select value={filtros.nivelAtual} onValueChange={(value) => setFiltros({ ...filtros, nivelAtual: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N2">N2</SelectItem>
-                  <SelectItem value="N3">N3</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -214,18 +171,8 @@ export function EscalonadosPage() {
               </Select>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="tecnico">Tecnico Responsavel</Label>
-              <Input
-                id="tecnico"
-                placeholder="Nome do tecnico"
-                value={filtros.tecnico}
-                onChange={(e) => setFiltros({ ...filtros, tecnico: e.target.value })}
-              />
-            </div>
-
             <div className="flex items-end gap-2">
-              <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2">
+              <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2" onClick={fetchEscalonados}>
                 <Search className="size-4" />
                 Filtrar
               </Button>
@@ -238,86 +185,83 @@ export function EscalonadosPage() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Chamados Escalonados */}
+      {/* Tabela de Chamados Atribuídos */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#1a3a5c]/5">
-                <TableHead className="font-semibold text-[#1a3a5c]">ID</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Chamado</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Cliente</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Prioridade</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Nivel Atual</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Escalonado de</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Data</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Status</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c] text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {escalonadosMock.map((chamado) => (
-                <TableRow key={chamado.id} className="hover:bg-[#3ba5d8]/5">
-                  <TableCell className="font-medium text-[#1a3a5c]">{chamado.id}</TableCell>
-                  <TableCell className="max-w-[200px]">
-                    <span className="line-clamp-2 text-sm">{chamado.chamado}</span>
-                  </TableCell>
-                  <TableCell>{chamado.cliente}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={prioridadeColors[chamado.prioridade]}>
-                      {chamado.prioridade.charAt(0).toUpperCase() + chamado.prioridade.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={nivelColors[chamado.nivelAtual]}>
-                      {chamado.nivelAtual}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className={nivelColors[chamado.escalonadoDe]}>
-                        {chamado.escalonadoDe}
-                      </Badge>
-                      <ArrowUpRight className="size-3 text-muted-foreground" />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{chamado.data}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={statusColors[chamado.status]}>
-                      {statusLabels[chamado.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setDetalhesAberto(chamado)}>
-                          <Eye className="size-4 mr-2" />
-                          Visualizar detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setHistoricoAberto(chamado)}>
-                          <History className="size-4 mr-2" />
-                          Ver historico
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <RefreshCw className="size-4 mr-2" />
-                          Escalonar novamente
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <CheckCircle className="size-4 mr-2" />
-                          Finalizar chamado
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="size-8 animate-spin text-[#3ba5d8]" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[#1a3a5c]/5">
+                  <TableHead className="font-semibold text-[#1a3a5c]">ID</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Chamado</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Cliente</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Prioridade</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Status</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c]">Data</TableHead>
+                  <TableHead className="font-semibold text-[#1a3a5c] text-right">Acoes</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {chamadosFiltrados.length > 0 ? (
+                  chamadosFiltrados.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-[#3ba5d8]/5">
+                      <TableCell className="font-medium text-[#1a3a5c]">CH-{c.id}</TableCell>
+                      <TableCell className="font-medium">{c.titulo}</TableCell>
+                      <TableCell>{c.empresa_nome}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={prioridadeColors[c.prioridade] || ""}>
+                          {c.prioridade ? (c.prioridade.charAt(0).toUpperCase() + c.prioridade.slice(1)) : "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColors[c.status] || ""}>
+                          {statusLabels[c.status] || c.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{new Date(c.data_abertura).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setDetalhesAberto(c)}>
+                              <Eye className="size-4 mr-2" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => escalonarChamado(c.id)}>
+                              <RefreshCw className="size-4 mr-2" />
+                              Escalonar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <CheckCircle className="size-4 mr-2" />
+                              Registrar solucao
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Lock className="size-4 mr-2" />
+                              Encerrar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Nenhum chamado atribuído encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -325,81 +269,49 @@ export function EscalonadosPage() {
       <Dialog open={!!detalhesAberto} onOpenChange={(open) => !open && setDetalhesAberto(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado {detalhesAberto?.id}</DialogTitle>
-            <DialogDescription>Informacoes completas do chamado escalonado</DialogDescription>
+            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado CH-{detalhesAberto?.id}</DialogTitle>
+            <DialogDescription>Informações completas do chamado escalonado</DialogDescription>
           </DialogHeader>
+          
           {detalhesAberto && (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="col-span-2 flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Descricao do Chamado</Label>
-                <p className="font-medium">{detalhesAberto.chamado}</p>
+            <div className="grid grid-cols-2 gap-6 py-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Cliente / Empresa</Label>
+                <p className="font-medium">{detalhesAberto.empresa_nome}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Cliente</Label>
-                <p className="font-medium">{detalhesAberto.cliente}</p>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Solicitante</Label>
+                <p className="font-medium">{detalhesAberto.solicitante_nome}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Tecnico Responsavel</Label>
-                <p className="font-medium">{detalhesAberto.tecnicoResponsavel}</p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Prioridade</Label>
-                <Badge variant="outline" className={prioridadeColors[detalhesAberto.prioridade]}>
-                  {detalhesAberto.prioridade.charAt(0).toUpperCase() + detalhesAberto.prioridade.slice(1)}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Prioridade</Label>
+                <Badge variant="outline" className={prioridadeColors[detalhesAberto.prioridade] || ""}>
+                  {detalhesAberto.prioridade}
                 </Badge>
               </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Nivel Atual</Label>
-                <Badge variant="outline" className={nivelColors[detalhesAberto.nivelAtual]}>
-                  {detalhesAberto.nivelAtual}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Badge variant="outline" className={statusColors[detalhesAberto.status] || ""}>
+                  {statusLabels[detalhesAberto.status] || detalhesAberto.status}
                 </Badge>
               </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Status</Label>
-                <Badge variant="outline" className={statusColors[detalhesAberto.status]}>
-                  {statusLabels[detalhesAberto.status]}
-                </Badge>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Data de Abertura</Label>
+                <p className="font-medium">{new Date(detalhesAberto.data_abertura).toLocaleString()}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-muted-foreground text-xs">Data de Escalonamento</Label>
-                <p className="font-medium">{detalhesAberto.data}</p>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Equipamento</Label>
+                <p className="font-medium">{detalhesAberto.equipamento_nome || "N/A"}</p>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Histórico */}
-      <Dialog open={!!historicoAberto} onOpenChange={(open) => !open && setHistoricoAberto(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Historico de Escalonamento - {historicoAberto?.id}</DialogTitle>
-            <DialogDescription>Linha do tempo do chamado</DialogDescription>
-          </DialogHeader>
-          {historicoAberto && (
-            <div className="py-4">
-              <div className="relative">
-                {historicoAberto.historico.map((item, index) => (
-                  <div key={index} className="flex gap-4 pb-6 last:pb-0">
-                    <div className="flex flex-col items-center">
-                      <div className={`size-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                        item.nivel === "N1" ? "bg-blue-500" : item.nivel === "N2" ? "bg-purple-500" : "bg-red-500"
-                      }`}>
-                        {item.nivel}
-                      </div>
-                      {index < historicoAberto.historico.length - 1 && (
-                        <div className="w-0.5 flex-1 bg-gray-200 mt-2" />
-                      )}
-                    </div>
-                    <div className="flex-1 pt-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{item.tecnico}</p>
-                        <span className="text-xs text-muted-foreground">{item.data}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{item.acao}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs text-muted-foreground">Título</Label>
+                <p className="font-medium">{detalhesAberto.titulo}</p>
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs text-muted-foreground">Descrição</Label>
+                <div className="bg-gray-50 p-3 rounded-lg text-sm border">
+                  {detalhesAberto.descricao}
+                </div>
               </div>
             </div>
           )}

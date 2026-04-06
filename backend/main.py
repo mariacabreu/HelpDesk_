@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao
 from datetime import datetime
 import random
 import smtplib
@@ -134,6 +134,19 @@ class ChamadoCreate(BaseModel):
     descricao: str
     tipo: str
     prioridade: str
+
+class ChamadoUpdate(BaseModel):
+    titulo: str | None = None
+    descricao: str | None = None
+    tipo: str | None = None
+    prioridade: str | None = None
+    status: str | None = None
+    atribuido_a_id: int | None = None
+    escalonado_por_nivel: str | None = None
+
+class HistoricoCreate(BaseModel):
+    usuario_id: int
+    acao: str
 
 class FuncionarioCreate(BaseModel):
     empresa_id: int
@@ -338,13 +351,42 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             titulo=chamado.titulo,
             descricao=chamado.descricao,
             tipo=chamado.tipo,
-            prioridade=prioridade_map.get(chamado.prioridade.lower(), Prioridade.MEDIA),
-            status=StatusChamado.ABERTO if not atribuido_id else StatusChamado.EM_ATENDIMENTO
+            prioridade=chamado.prioridade.lower(),
+            status="aberto" if not atribuido_id else "em_atendimento"
         )
         db.add(db_chamado)
+        db.flush() # Para gerar o ID do chamado antes das notificações
+        
+        # Notificar solicitante (confirmação)
+        notif_sol = Notificacao(
+            usuario_id=db_chamado.solicitante_id,
+            mensagem=f"Seu chamado CH-{db_chamado.id} foi aberto com sucesso: {chamado.titulo}"
+        )
+        db.add(notif_sol)
+
+        # Notificar gestores da empresa (role empresa)
+        gestores = db.query(Funcionario).filter(
+            Funcionario.empresa_id == db_chamado.empresa_id,
+            Funcionario.cargo.in_(["Empresa", "Diretor", "Desenvolvedora"])
+        ).all()
+        for g in gestores:
+            if g.id != db_chamado.solicitante_id:
+                db.add(Notificacao(
+                    usuario_id=g.id,
+                    mensagem=f"Novo chamado CH-{db_chamado.id} aberto por {db_chamado.solicitante.nome}: {chamado.titulo}"
+                ))
+
+        # Notificar se atribuído
+        if atribuido_id and atribuido_id > 0:
+            notif = Notificacao(
+                usuario_id=atribuido_id,
+                mensagem=f"Novo chamado CH-{db_chamado.id} atribuído a você: {chamado.titulo}"
+            )
+            db.add(notif)
+            
         db.commit()
         db.refresh(db_chamado)
-        return db_chamado
+        return format_chamado(db_chamado)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar chamado: {str(e)}")
@@ -413,13 +455,117 @@ def delete_equipamento(equipamento_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao excluir equipamento: {str(ex)}")
 
+def format_chamado(c: Chamado):
+    return {
+        "id": c.id,
+        "empresa_id": c.empresa_id,
+        "solicitante_id": c.solicitante_id,
+        "equipamento_id": c.equipamento_id,
+        "atribuido_a_id": c.atribuido_a_id,
+        "titulo": c.titulo,
+        "descricao": c.descricao,
+        "tipo": c.tipo,
+        "prioridade": str(c.prioridade.value) if hasattr(c.prioridade, 'value') else str(c.prioridade),
+        "status": str(c.status.value) if hasattr(c.status, 'value') else str(c.status),
+        "escalonado_por_nivel": c.escalonado_por_nivel,
+        "data_abertura": c.data_abertura,
+        "data_fechamento": c.data_fechamento,
+        "empresa_nome": c.empresa.nome_fantasia if c.empresa else None,
+        "solicitante_nome": c.solicitante.nome if c.solicitante else None,
+        "atribuido_a_nome": c.atribuido_a.nome if c.atribuido_a else None,
+        "equipamento_nome": c.equipamento.nome if c.equipamento else None,
+        "equipamento_patrimonio": c.equipamento.patrimonio if c.equipamento else None,
+        "historico": [
+            {
+                "id": h.id,
+                "acao": h.acao,
+                "data": h.data,
+                "usuario": h.usuario.nome if h.usuario else "Sistema"
+            } for h in (c.historico or [])
+        ]
+    }
+
+@app.get("/chamados")
+def get_all_chamados(db: Session = Depends(get_db)):
+    chamados = db.query(Chamado).all()
+    return [format_chamado(c) for c in chamados]
+
+@app.get("/chamados/atribuido/{tecnico_id}")
+def get_chamados_atribuido(tecnico_id: int, db: Session = Depends(get_db)):
+    chamados = db.query(Chamado).filter(Chamado.atribuido_a_id == tecnico_id).all()
+    return [format_chamado(c) for c in chamados]
+
+@app.get("/chamados/escalados-disponiveis/{nivel}")
+def get_escalados_disponiveis(nivel: str, db: Session = Depends(get_db)):
+    nivel = nivel.lower()
+    if nivel == "n2":
+        # N2 vê escalados de N1
+        chamados = db.query(Chamado).filter(Chamado.escalonado_por_nivel == "n1", Chamado.atribuido_a_id == None).all()
+    elif nivel == "n3":
+        # N3 vê escalados de N1 e N2
+        chamados = db.query(Chamado).filter(Chamado.escalonado_por_nivel.in_(["n1", "n2"]), Chamado.atribuido_a_id == None).all()
+    else:
+        chamados = []
+    
+    return [format_chamado(c) for c in chamados]
+
+@app.patch("/chamados/{chamado_id}")
+def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depends(get_db)):
+    db_chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
+    if not db_chamado:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado")
+    
+    update_data = c_update.dict(exclude_unset=True)
+    
+    # Mapear strings de prioridade e status para Enums se necessário
+    for key, value in update_data.items():
+        if key == "prioridade" and value:
+            setattr(db_chamado, key, value.lower())
+        elif key == "status" and value:
+            setattr(db_chamado, key, value.lower())
+            if value.lower() in ["resolvido", "fechado", "cancelado"]:
+                db_chamado.data_fechamento = datetime.utcnow()
+            # Notificar solicitante sobre mudança de status
+            notif = Notificacao(
+                usuario_id=db_chamado.solicitante_id,
+                mensagem=f"Status do chamado CH-{db_chamado.id} alterado para {value.lower()}"
+            )
+            db.add(notif)
+        elif key == "atribuido_a_id":
+            setattr(db_chamado, key, value)
+            if value:
+                # Notificar o técnico atribuído
+                notif = Notificacao(
+                    usuario_id=value,
+                    mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
+                )
+                db.add(notif)
+                # Notificar o solicitante
+                notif_sol = Notificacao(
+                    usuario_id=db_chamado.solicitante_id,
+                    mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
+                )
+                db.add(notif_sol)
+        else:
+            setattr(db_chamado, key, value)
+    
+    try:
+        db.commit()
+        db.refresh(db_chamado)
+        return format_chamado(db_chamado)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar chamado: {str(e)}")
+
 @app.get("/chamados/empresa/{empresa_id}")
 def get_chamados_empresa(empresa_id: int, db: Session = Depends(get_db)):
-    return db.query(Chamado).filter(Chamado.empresa_id == empresa_id).all()
+    chamados = db.query(Chamado).filter(Chamado.empresa_id == empresa_id).all()
+    return [format_chamado(c) for c in chamados]
 
 @app.get("/chamados/solicitante/{solicitante_id}")
 def get_chamados_solicitante(solicitante_id: int, db: Session = Depends(get_db)):
-    return db.query(Chamado).filter(Chamado.solicitante_id == solicitante_id).all()
+    chamados = db.query(Chamado).filter(Chamado.solicitante_id == solicitante_id).all()
+    return [format_chamado(c) for c in chamados]
 
 @app.get("/funcionarios/empresa/{empresa_id}")
 def get_funcionarios_empresa(empresa_id: int, db: Session = Depends(get_db)):
@@ -512,18 +658,48 @@ def create_funcionario(f: FuncionarioCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar funcionário: {str(ex)}")
 
+@app.get("/stats/suporte")
+def get_stats_suporte(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    from database import Chamado
+    
+    total_abertos = db.query(func.count(Chamado.id)).filter(Chamado.status == "aberto").scalar() or 0
+    total_em_andamento = db.query(func.count(Chamado.id)).filter(Chamado.status == "em_atendimento").scalar() or 0
+    total_resolvidos = db.query(func.count(Chamado.id)).filter(Chamado.status == "resolvido").scalar() or 0
+    
+    # Chamados recentes
+    recentes = db.query(Chamado).order_by(Chamado.data_abertura.desc()).limit(5).all()
+    recentes_list = []
+    for c in recentes:
+        recentes_list.append({
+            "id": c.id,
+            "titulo": c.titulo,
+            "empresa": c.empresa.nome_fantasia if c.empresa else "N/A",
+            "prioridade": c.prioridade.value if hasattr(c.prioridade, 'value') else c.prioridade,
+            "status": c.status.value if hasattr(c.status, 'value') else c.status
+        })
+    
+    return {
+        "abertos": total_abertos,
+        "em_andamento": total_em_andamento,
+        "resolvidos": total_resolvidos,
+        "recentes": recentes_list
+    }
+
 @app.get("/stats/empresa/{empresa_id}")
 def get_stats_empresa(empresa_id: int, db: Session = Depends(get_db)):
     from sqlalchemy import func
-    from database import Equipamento, Funcionario, Chamado, StatusChamado
+    from database import Equipamento, Funcionario, Chamado
     
     total_chamados = db.query(func.count(Chamado.id)).filter(Chamado.empresa_id == empresa_id).scalar()
-    chamados_ativos = db.query(func.count(Chamado.id)).filter(
-        Chamado.empresa_id == empresa_id, 
-        Chamado.status.in_([StatusChamado.ABERTO, StatusChamado.EM_ATENDIMENTO])
-    ).scalar()
     total_equipamentos = db.query(func.count(Equipamento.id)).filter(Equipamento.empresa_id == empresa_id).scalar()
     total_funcionarios = db.query(func.count(Funcionario.id)).filter(Funcionario.empresa_id == empresa_id).scalar()
+    
+    # Chamados ativos da empresa
+    chamados_ativos = db.query(func.count(Chamado.id)).filter(
+        Chamado.empresa_id == empresa_id,
+        Chamado.status.in_(["aberto", "em_atendimento", "escalado", "pendente"])
+    ).scalar()
     
     return {
         "chamados_ativos": chamados_ativos,
@@ -534,16 +710,103 @@ def get_stats_empresa(empresa_id: int, db: Session = Depends(get_db)):
 
 @app.patch("/chamados/{chamado_id}/cancelar")
 def cancelar_chamado(chamado_id: int, db: Session = Depends(get_db)):
+    from database import HistoricoChamado
     chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
     if not chamado:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
-    if chamado.status in [StatusChamado.FECHADO, StatusChamado.RESOLVIDO]:
-        return chamado
-    chamado.status = StatusChamado.FECHADO
+    
+    current_status = chamado.status.value if hasattr(chamado.status, 'value') else chamado.status
+    if current_status in ["fechado", "resolvido", "cancelado"]:
+        return format_chamado(chamado)
+        
+    chamado.status = "cancelado"
     chamado.data_fechamento = datetime.utcnow()
+    
+    # Notificar o técnico se houver um atribuído
+    if chamado.atribuido_a_id:
+        notif = Notificacao(
+            usuario_id=chamado.atribuido_a_id,
+            mensagem=f"O chamado CH-{chamado.id} foi cancelado pelo solicitante."
+        )
+        db.add(notif)
+        
+    # Adicionar ao histórico
+    hist = HistoricoChamado(
+        chamado_id=chamado.id,
+        usuario_id=chamado.solicitante_id, # Solicitante cancelou
+        acao="Chamado cancelado pelo usuário"
+    )
+    db.add(hist)
+    
     db.commit()
     db.refresh(chamado)
-    return chamado
+    return format_chamado(chamado)
+
+@app.post("/chamados/{chamado_id}/historico")
+def add_historico(chamado_id: int, h: HistoricoCreate, db: Session = Depends(get_db)):
+    from database import HistoricoChamado
+    chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
+    if not chamado:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado")
+    
+    novo_h = HistoricoChamado(
+        chamado_id=chamado_id,
+        usuario_id=h.usuario_id,
+        acao=h.acao
+    )
+    db.add(novo_h)
+    
+    # Notificar a outra parte
+    # Se o autor do comentário for o solicitante ou gestor, notifica o técnico
+    # Se o autor for o técnico, notifica o solicitante e gestores
+    autor = db.query(Funcionario).filter(Funcionario.id == h.usuario_id).first()
+    autor_nome = autor.nome if autor else "Alguém"
+    
+    # Se o autor for o técnico
+    if h.usuario_id == chamado.atribuido_a_id:
+        # Notificar solicitante
+        db.add(Notificacao(
+            usuario_id=chamado.solicitante_id,
+            mensagem=f"Novo comentário no chamado CH-{chamado_id} de {autor_nome}: {h.acao[:50]}..."
+        ))
+        # Notificar gestores
+        gestores = db.query(Funcionario).filter(
+            Funcionario.empresa_id == chamado.empresa_id,
+            Funcionario.cargo.in_(["Empresa", "Diretor", "Desenvolvedora"])
+        ).all()
+        for g in gestores:
+            if g.id != chamado.solicitante_id and g.id != h.usuario_id:
+                db.add(Notificacao(
+                    usuario_id=g.id,
+                    mensagem=f"Novo comentário no chamado CH-{chamado_id} de {autor_nome}: {h.acao[:50]}..."
+                ))
+    else:
+        # Se o autor for o solicitante ou gestor, notificar o técnico
+        if chamado.atribuido_a_id:
+            db.add(Notificacao(
+                usuario_id=chamado.atribuido_a_id,
+                mensagem=f"Novo comentário no chamado CH-{chamado_id} de {autor_nome}: {h.acao[:50]}..."
+            ))
+            
+    db.commit()
+    db.refresh(novo_h)
+    return novo_h
+
+@app.get("/notificacoes/{usuario_id}")
+def get_notificacoes(usuario_id: int, db: Session = Depends(get_db)):
+    return db.query(Notificacao).filter(
+        Notificacao.usuario_id == usuario_id,
+        Notificacao.lida == 0
+    ).order_by(Notificacao.data.desc()).all()
+
+@app.patch("/notificacoes/ler-todas/{usuario_id}")
+def ler_todas_notificacoes(usuario_id: int, db: Session = Depends(get_db)):
+    db.query(Notificacao).filter(
+        Notificacao.usuario_id == usuario_id,
+        Notificacao.lida == 0
+    ).update({"lida": 1})
+    db.commit()
+    return {"success": True}
 
 if __name__ == "__main__":
     import uvicorn

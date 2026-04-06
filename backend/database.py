@@ -12,6 +12,7 @@ class StatusChamado(enum.Enum):
     PENDENTE = "pendente"
     RESOLVIDO = "resolvido"
     FECHADO = "fechado"
+    CANCELADO = "cancelado"
 
 class Prioridade(enum.Enum):
     BAIXA = "baixa"
@@ -100,8 +101,9 @@ class Chamado(Base):
     titulo = Column(String(200), nullable=False)
     descricao = Column(Text, nullable=False)
     tipo = Column(String(50)) # ex: Incidente, Solicitação, Dúvida
-    prioridade = Column(Enum(Prioridade), default=Prioridade.MEDIA)
-    status = Column(Enum(StatusChamado), default=StatusChamado.ABERTO)
+    prioridade = Column(String(50), default="media")
+    status = Column(String(50), default="aberto")
+    escalonado_por_nivel = Column(String(20), nullable=True) # n1, n2
     
     data_abertura = Column(DateTime, default=datetime.utcnow)
     data_fechamento = Column(DateTime, nullable=True)
@@ -111,6 +113,32 @@ class Chamado(Base):
     solicitante = relationship("Funcionario", foreign_keys=[solicitante_id], back_populates="chamados_solicitados")
     atribuido_a = relationship("Funcionario", foreign_keys=[atribuido_a_id], back_populates="chamados_atribuidos")
     equipamento = relationship("Equipamento", back_populates="chamados")
+    historico = relationship("HistoricoChamado", back_populates="chamado", cascade="all, delete-orphan")
+
+class HistoricoChamado(Base):
+    __tablename__ = 'historico_chamados'
+    
+    id = Column(Integer, primary_key=True)
+    chamado_id = Column(Integer, ForeignKey('chamados.id'))
+    usuario_id = Column(Integer, ForeignKey('funcionarios.id'))
+    acao = Column(Text, nullable=False)
+    data = Column(DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    chamado = relationship("Chamado", back_populates="historico")
+    usuario = relationship("Funcionario")
+
+class Notificacao(Base):
+    __tablename__ = 'notificacoes'
+    
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey('funcionarios.id'))
+    mensagem = Column(Text, nullable=False)
+    lida = Column(Integer, default=0) # 0 para não lida, 1 para lida
+    data = Column(DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    usuario = relationship("Funcionario")
 
 # Configuração do Banco de Dados
 DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"

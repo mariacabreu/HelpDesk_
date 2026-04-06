@@ -12,8 +12,35 @@ import {
   Calendar,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Eye } from "lucide-react"
+import { Button } from "@/components/ui/button"
+
 import { Badge } from "@/components/ui/badge"
 import { formatDateShort } from "@/lib/utils"
+
+const prioridadeConfig: Record<string, { label: string; cor: string }> = {
+  baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
+  media: { label: "Média", cor: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  alta: { label: "Alta", cor: "bg-red-100 text-red-800 border-red-200" },
+  critica: { label: "Crítica", cor: "bg-red-200 text-red-900 border-red-300" },
+}
+
+const statusConfig: Record<string, { label: string; cor: string }> = {
+  aberto: { label: "Aberto", cor: "bg-blue-100 text-blue-800" },
+  em_atendimento: { label: "Em Atendimento", cor: "bg-purple-100 text-purple-800" },
+  escalado: { label: "Escalonado", cor: "bg-orange-100 text-orange-800" },
+  resolvido: { label: "Resolvido", cor: "bg-green-100 text-green-800" },
+  fechado: { label: "Fechado", cor: "bg-gray-100 text-gray-800" },
+  cancelado: { label: "Cancelado", cor: "bg-red-100 text-red-800" },
+}
 
 export function DashboardEmpresaPage() {
   const [userData, setUserData] = useState<any>(null)
@@ -120,27 +147,65 @@ export function DashboardEmpresaPage() {
             <CardTitle className="text-[#1a3a5c]">Resumo de Chamados</CardTitle>
             <CardDescription>Seus últimos tickets registrados</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="space-y-4">
               {loading ? (
                 <p className="text-center py-4 text-muted-foreground">Carregando chamados...</p>
               ) : recentTickets.length > 0 ? (
-                recentTickets.map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between p-4 bg-white border rounded-xl hover:shadow-sm transition-shadow">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-semibold text-[#3ba5d8]">CH-{ticket.id.toString().padStart(3, '0')}</span>
-                      <span className="font-medium text-[#1a3a5c]">{ticket.titulo}</span>
-                      <span className="text-xs text-muted-foreground">Aberto em {formatDateShort(ticket.data_abertura)}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge className={ticket.status === "resolvido" || ticket.status === "fechado" ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}>
-                        {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </div>
-                ))
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#1a3a5c]/5">
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">ID</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamado</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Cliente</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Prioridade</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Data</TableHead>
+                        <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentTickets.map((ticket) => (
+                        <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
+                          <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">
+                            CH-{ticket.id.toString().padStart(3, '0')}
+                          </TableCell>
+                          <TableCell className="font-medium border border-[#1a3a5c]/10">
+                            {ticket.titulo}
+                          </TableCell>
+                          <TableCell className="border border-[#1a3a5c]/10">
+                            {ticket.empresa_nome || empresa?.nome_fantasia || "Tech Solutions"}
+                          </TableCell>
+                          <TableCell className="border border-[#1a3a5c]/10">
+                            <Badge className={prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"}>
+                              {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="border border-[#1a3a5c]/10">
+                            <Badge className={statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"}>
+                              {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm border border-[#1a3a5c]/10">
+                            {new Date(ticket.data_abertura).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right border border-[#1a3a5c]/10">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="size-9"
+                            >
+                              <Eye className="size-4 text-[#3ba5d8]" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <p className="text-center py-4 text-muted-foreground">Nenhum chamado encontrado.</p>
+                <p className="text-center py-8 text-muted-foreground">Nenhum chamado encontrado.</p>
               )}
             </div>
           </CardContent>

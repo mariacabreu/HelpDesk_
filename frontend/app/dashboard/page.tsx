@@ -87,6 +87,7 @@ export default function DashboardPage() {
       )}
       <SidebarInset className="flex flex-col h-screen overflow-hidden">
         <DashboardHeader 
+          userId={userData?.id}
           userRole={userRole} 
           onRoleChange={handleRoleChange} 
           userName={userRole === "empresa" ? userData?.empresa?.nome_fantasia : userData?.nome}
