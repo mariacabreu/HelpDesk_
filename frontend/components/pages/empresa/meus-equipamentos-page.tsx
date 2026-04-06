@@ -29,18 +29,40 @@ const statusConfig = {
   inativo: { label: "Inativo", cor: "bg-red-100 text-red-800" },
 }
 
+interface HistoricoChamado {
+  id: string | number
+  titulo: string
+  data: string
+  status: string
+}
+
+interface Equipamento {
+  id: number
+  nome: string
+  tipo: string
+  patrimonio: string
+  marca: string
+  modelo: string
+  numero_serie: string
+  status: string
+  chamados_count?: number
+  chamados?: number
+  especificacoes?: Record<string, string | number | boolean | null>
+  historicoChamados?: HistoricoChamado[]
+}
+
 interface MeusEquipamentosPageProps {
   onOpenTicket?: () => void
 }
 
 export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps) {
   const [userData, setUserData] = useState<any>(null)
-  const [equipamentos, setEquipamentos] = useState<any[]>([])
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("")
   const [filtroStatus, setFiltroStatus] = useState("")
-  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<any | null>(null)
+  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<Equipamento | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
   const [modalEditar, setModalEditar] = useState(false)
@@ -441,7 +463,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                     {Object.entries(equipamentoSelecionado.especificacoes || {}).map(([key, value]) => (
                       <div key={key} className="p-2 bg-gray-50 rounded">
                         <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                        <p className="text-sm font-medium">{value}</p>
+                        <p className="text-sm font-medium">{String(value)}</p>
                       </div>
                     ))}
                   </div>
@@ -451,7 +473,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
               <TabsContent value="chamados" className="mt-4">
                 {(equipamentoSelecionado.historicoChamados || []).length > 0 ? (
                   <div className="space-y-2">
-                    {(equipamentoSelecionado.historicoChamados || []).map((chamado) => (
+                    {(equipamentoSelecionado.historicoChamados || []).map((chamado: HistoricoChamado) => (
                       <div key={chamado.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium text-sm">{chamado.id} - {chamado.titulo}</p>
