@@ -141,7 +141,7 @@ class Notificacao(Base):
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, ForeignKey('funcionarios.id'))
     mensagem = Column(Text, nullable=False)
-    lida = Column(Integer, default=0) # 0 para não lida, 1 para lida
+    lida = Column(Integer, default=0)
     data = Column(DateTime, default=datetime.utcnow)
     
     # Relacionamentos
@@ -152,8 +152,8 @@ class LogSistema(Base):
     
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    tipo = Column(String(20), nullable=False) # info, success, warning, error
-    modulo = Column(String(50), nullable=False) # Autenticação, Chamados, etc.
+    tipo = Column(String(20), nullable=False)
+    modulo = Column(String(50), nullable=False)
     usuario_id = Column(Integer, ForeignKey('funcionarios.id'), nullable=True)
     usuario_nome = Column(String(100), nullable=True)
     acao = Column(Text, nullable=False)

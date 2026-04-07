@@ -150,7 +150,7 @@ def registrar_log(db: Session, tipo: str, modulo: str, acao: str, usuario_id: in
         print(f"Erro ao registrar log: {e}")
         db.rollback()
 
-# Configurar CORS para o frontend (geralmente localhost:3000)
+# Configurar CORS para o frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Em produção, especifique as origens permitidas
@@ -259,28 +259,28 @@ class EquipamentoUpdate(BaseModel):
 
 @app.post("/empresas")
 def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
-    # 1. Verificar se o CNPJ já existe
-    existing_empresa = db.query(Empresa).filter(Empresa.cnpj == empresa.cnpj).first()
-    if existing_empresa:
-        raise HTTPException(status_code=400, detail="Empresa com este CNPJ já cadastrada")
-    
-    # 2. Verificar se o e-mail da empresa já existe
-    if empresa.email:
-        existing_email_empresa = db.query(Empresa).filter(Empresa.email == empresa.email).first()
-        if existing_email_empresa:
-            raise HTTPException(status_code=400, detail="Este e-mail de empresa já está em uso")
-        
-        # Verificar se o e-mail já existe na tabela de funcionários
-        existing_email_func = db.query(Funcionario).filter(Funcionario.email == empresa.email).first()
-        if existing_email_func:
-            raise HTTPException(status_code=400, detail="Este e-mail já está associado a um usuário")
-
-    # 3. Verificar se o login já existe
-    existing_user = db.query(Funcionario).filter(Funcionario.login == empresa.login).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Este login já está em uso")
-
     try:
+        # 1. Verificar se o CNPJ já existe
+        existing_empresa = db.query(Empresa).filter(Empresa.cnpj == empresa.cnpj).first()
+        if existing_empresa:
+            raise HTTPException(status_code=400, detail="Empresa com este CNPJ já cadastrada")
+        
+        # 2. Verificar se o e-mail da empresa já existe
+        if empresa.email:
+            existing_email_empresa = db.query(Empresa).filter(Empresa.email == empresa.email).first()
+            if existing_email_empresa:
+                raise HTTPException(status_code=400, detail="Este e-mail de empresa já está em uso")
+            
+            # Verificar se o e-mail já existe na tabela de funcionários
+            existing_email_func = db.query(Funcionario).filter(Funcionario.email == empresa.email).first()
+            if existing_email_func:
+                raise HTTPException(status_code=400, detail="Este e-mail já está associado a um usuário")
+
+        # 3. Verificar se o login já existe
+        existing_user = db.query(Funcionario).filter(Funcionario.login == empresa.login).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Este login já está em uso")
+
         db_empresa = Empresa(
             razao_social=empresa.razao_social,
             nome_fantasia=empresa.nome_fantasia,
@@ -314,9 +314,20 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
         db.add(db_funcionario)
         db.commit()
         
-        return db_empresa
+        # Retornar como dicionário para evitar problemas de serialização
+        return {
+            "id": db_empresa.id,
+            "razao_social": db_empresa.razao_social,
+            "nome_fantasia": db_empresa.nome_fantasia,
+            "cnpj": db_empresa.cnpj,
+            "email": db_empresa.email
+        }
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
+        print(f"Erro ao criar empresa: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno ao criar empresa: {str(e)}")
 
 @app.post("/login")

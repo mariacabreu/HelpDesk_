@@ -801,18 +801,6 @@ export function GestaoFuncionariosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Permissão</Label>
-                  <Select value={novoFunc.permissao} onValueChange={(val) => setNovoFunc({...novoFunc, permissao: val})}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a permissão" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="usuario">Usuário Comum</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </div>
           </div>
