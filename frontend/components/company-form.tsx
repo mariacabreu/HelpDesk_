@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, EyeOff, ArrowLeft, Building2, User, MapPin, Lock, FileText } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Building2, User, MapPin, Lock, FileText, CheckCircle2 } from "lucide-react"
 
 interface CompanyFormProps {
   onBack: () => void
@@ -16,10 +16,10 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     razaoSocial: "",
-    nomeFantasia: "",
     cnpj: "",
     inscricaoEstadual: "",
     segmento: "",
@@ -78,13 +78,33 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
       .substring(0, 9)
   }
 
-  const handleChange = (id: string, value: string) => {
+  const handleChange = async (id: string, value: string) => {
     let maskedValue = value
 
     if (id === "cnpj") maskedValue = maskCNPJ(value)
     if (id === "telefoneContato") maskedValue = maskPhone(value)
     if (id === "celular") maskedValue = maskCelular(value)
-    if (id === "cep") maskedValue = maskCEP(value)
+    if (id === "cep") {
+      maskedValue = maskCEP(value)
+      // Preenchimento automático ao digitar 8 dígitos
+      if (maskedValue.replace(/\D/g, "").length === 8) {
+        const cepLimpo = maskedValue.replace(/\D/g, "")
+        try {
+          const response = await fetch(`/api/cep/${cepLimpo}`)
+          const data = await response.json()
+          if (!data.erro) {
+            setFormData((prev) => ({
+              ...prev,
+              rua: data.logradouro || prev.rua,
+              bairro: data.bairro || prev.bairro,
+              cidade: data.localidade || prev.cidade,
+              estado: data.uf || prev.estado,
+              cep: maskedValue
+            }))
+          }
+        } catch (e) {}
+      }
+    }
 
     setFormData((prev) => ({ ...prev, [id]: maskedValue }))
     // Limpar erro do campo quando o usuário digita
@@ -101,11 +121,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
     const newErrors: Record<string, string> = {}
     const requiredFields = [
       "razaoSocial",
-      "nomeFantasia",
       "cnpj",
-      "nomeResponsavel",
-      "cargoResponsavel",
-      "emailContato",
       "cep",
       "rua",
       "numero",
@@ -146,13 +162,13 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
         },
         body: JSON.stringify({
           razao_social: formData.razaoSocial,
-          nome_fantasia: formData.nomeFantasia,
+          nome_fantasia: formData.razaoSocial,
           cnpj: formData.cnpj,
-          inscricao_estadual: formData.inscricaoEstadual,
+          inscricao_estadual: "",
           segmento: formData.segmento,
-          nome_responsavel: formData.nomeResponsavel,
-          cargo_responsavel: formData.cargoResponsavel,
-          email: formData.emailContato,
+          nome_responsavel: formData.razaoSocial, // Usando a Razão Social como responsável na falta do Nome
+          cargo_responsavel: "Administrador",
+          email: formData.emailLogin,
           telefone: formData.telefoneContato || formData.celular,
           cep: formData.cep,
           endereco: `${formData.rua}, ${formData.numero}${formData.complemento ? " - " + formData.complemento : ""}, ${formData.bairro}`,
@@ -169,14 +185,54 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
         return
       }
 
-      alert("Empresa cadastrada com sucesso!")
-      onBack()
+      setSuccess(true)
+      // Redirecionar após 3 segundos
+      setTimeout(() => {
+        onBack()
+      }, 3000)
     } catch (error) {
       console.error("Erro:", error)
       alert("Erro ao conectar com o servidor")
     } finally {
       setLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <Card className="w-full max-w-2xl animate-in fade-in zoom-in duration-300">
+        <CardContent className="pt-12 pb-12 flex flex-col items-center text-center space-y-6">
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-75"></div>
+            <div className="relative bg-green-100 p-4 rounded-full">
+              <CheckCircle2 className="h-16 w-16 text-[#7ac142]" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold text-[#1a3a5c]">Empresa Cadastrada!</h2>
+            <p className="text-muted-foreground text-lg">
+              O cadastro da empresa <strong>{formData.razaoSocial}</strong> foi concluído com sucesso.
+            </p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 max-w-sm w-full">
+            <p className="text-sm text-blue-700">
+              Agora você já pode realizar o login utilizando o e-mail e a senha que foram cadastrados.
+            </p>
+          </div>
+          <div className="pt-4 w-full max-w-xs">
+            <Button 
+              className="w-full bg-[#1a3a5c] hover:bg-[#2a4a6c] text-white"
+              onClick={onBack}
+            >
+              Ir para o Login
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">
+              Você será redirecionado automaticamente em instantes...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -218,18 +274,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.razaoSocial && <p className="text-xs text-red-500">{errors.razaoSocial}</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="nomeFantasia" className={errors.nomeFantasia ? "text-red-500" : ""}>Nome Fantasia</Label>
-                <Input 
-                  id="nomeFantasia" 
-                  placeholder="Digite o nome fantasia" 
-                  value={formData.nomeFantasia}
-                  onChange={(e) => handleChange("nomeFantasia", e.target.value)}
-                  className={errors.nomeFantasia ? "border-red-500" : ""}
-                />
-                {errors.nomeFantasia && <p className="text-xs text-red-500">{errors.nomeFantasia}</p>}
-              </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="cnpj" className={errors.cnpj ? "text-red-500" : ""}>CNPJ</Label>
                 <Input 
                   id="cnpj" 
@@ -240,76 +285,12 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.cnpj && <p className="text-xs text-red-500">{errors.cnpj}</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="inscricaoEstadual">Inscrição Estadual (opcional)</Label>
-                <Input 
-                  id="inscricaoEstadual" 
-                  placeholder="Digite a inscrição estadual" 
-                  value={formData.inscricaoEstadual}
-                  onChange={(e) => handleChange("inscricaoEstadual", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="segmento">Segmento</Label>
-                <Select value={formData.segmento} onValueChange={(val) => handleChange("segmento", val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o segmento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="industria">Indústria</SelectItem>
-                    <SelectItem value="comercio">Comércio</SelectItem>
-                    <SelectItem value="servicos">Serviços</SelectItem>
-                    <SelectItem value="educacao">Educação</SelectItem>
-                    <SelectItem value="saude">Saúde</SelectItem>
-                    <SelectItem value="tecnologia">Tecnologia</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
 
           {/* Dados de Contato */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#7ac142]">
-              <User className="h-5 w-5" />
-              <h3 className="font-semibold">Dados de Contato</h3>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nomeResponsavel" className={errors.nomeResponsavel ? "text-red-500" : ""}>Nome do Responsável</Label>
-                <Input 
-                  id="nomeResponsavel" 
-                  placeholder="Digite o nome" 
-                  value={formData.nomeResponsavel}
-                  onChange={(e) => handleChange("nomeResponsavel", e.target.value)}
-                  className={errors.nomeResponsavel ? "border-red-500" : ""}
-                />
-                {errors.nomeResponsavel && <p className="text-xs text-red-500">{errors.nomeResponsavel}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cargoResponsavel" className={errors.cargoResponsavel ? "text-red-500" : ""}>Cargo</Label>
-                <Input 
-                  id="cargoResponsavel" 
-                  placeholder="Digite o cargo" 
-                  value={formData.cargoResponsavel}
-                  onChange={(e) => handleChange("cargoResponsavel", e.target.value)}
-                  className={errors.cargoResponsavel ? "border-red-500" : ""}
-                />
-                {errors.cargoResponsavel && <p className="text-xs text-red-500">{errors.cargoResponsavel}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="emailContato" className={errors.emailContato ? "text-red-500" : ""}>E-mail</Label>
-                <Input 
-                  id="emailContato" 
-                  type="email" 
-                  placeholder="email@empresa.com" 
-                  value={formData.emailContato}
-                  onChange={(e) => handleChange("emailContato", e.target.value)}
-                  className={errors.emailContato ? "border-red-500" : ""}
-                />
-                {errors.emailContato && <p className="text-xs text-red-500">{errors.emailContato}</p>}
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="telefoneContato">Telefone</Label>
                 <Input 
@@ -338,7 +319,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
               <h3 className="font-semibold">Endereço</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="cep" className={errors.cep ? "text-red-500" : ""}>CEP</Label>
                 <Input 
                   id="cep" 
@@ -518,61 +499,6 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                   </Button>
                 </div>
                 {errors.confirmarSenhaEmpresa && <p className="text-xs text-red-500">{errors.confirmarSenhaEmpresa}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Informações Técnicas */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#7ac142]">
-              <FileText className="h-5 w-5" />
-              <h3 className="font-semibold">Informações Técnicas (Opcional)</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="plano">Plano contratado</Label>
-                <Select value={formData.plano} onValueChange={(val) => handleChange("plano", val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o plano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basico">Básico</SelectItem>
-                    <SelectItem value="profissional">Profissional</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sla">SLA contratado</Label>
-                <Select value={formData.sla} onValueChange={(val) => handleChange("sla", val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o SLA" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4h">4 horas</SelectItem>
-                    <SelectItem value="8h">8 horas</SelectItem>
-                    <SelectItem value="24h">24 horas</SelectItem>
-                    <SelectItem value="48h">48 horas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dataInicio">Data de início do contrato</Label>
-                <Input 
-                  id="dataInicio" 
-                  type="date" 
-                  value={formData.dataInicio}
-                  onChange={(e) => handleChange("dataInicio", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dataVencimento">Data de vencimento</Label>
-                <Input 
-                  id="dataVencimento" 
-                  type="date" 
-                  value={formData.dataVencimento}
-                  onChange={(e) => handleChange("dataVencimento", e.target.value)}
-                />
               </div>
             </div>
           </div>

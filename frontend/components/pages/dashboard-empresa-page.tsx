@@ -25,6 +25,9 @@ import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
 import { formatDateShort, formatDate } from "@/lib/utils"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Paperclip, History } from "lucide-react"
 
 const prioridadeConfig: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
@@ -47,6 +50,14 @@ export function DashboardEmpresaPage() {
   const [dynamicStats, setDynamicStats] = useState<any>(null)
   const [recentTickets, setRecentTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [chamadoSelecionado, setChamadoSelecionado] = useState<any | null>(null)
+  const [modalAberto, setModalAberto] = useState(false)
+  const [equipamentosById, setEquipamentosById] = useState<Record<string, { nome: string; patrimonio?: string }>>({})
+
+  const onViewTicket = (ticket: any) => {
+    setChamadoSelecionado(ticket)
+    setModalAberto(true)
+  }
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -74,6 +85,18 @@ export function DashboardEmpresaPage() {
           })
           .catch(err => console.error("Erro ao buscar chamados recentes:", err))
           .finally(() => setLoading(false))
+
+        // Buscar equipamentos para o mapa de nomes
+        fetch(`/api/equipamentos/${empresaId}`)
+          .then(res => res.json())
+          .then((data) => {
+            const map: Record<string, { nome: string; patrimonio?: string }> = {}
+            ;(data || []).forEach((e: any) => {
+              if (e?.id != null) map[String(e.id)] = { nome: e.nome, patrimonio: e.patrimonio }
+            })
+            setEquipamentosById(map)
+          })
+          .catch(() => setEquipamentosById({}))
       }
     }
   }, [])
@@ -121,7 +144,7 @@ export function DashboardEmpresaPage() {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold text-[#1a3a5c]">Portal da Empresa</h1>
           <p className="text-muted-foreground">
-            {empresa?.nome_fantasia || "Tech Solutions Ltda"} - Gestão de Atendimento
+            {empresa?.nome_fantasia || "Tech Solutions Ltda"} - Gestão de chamados
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-100">
@@ -152,71 +175,87 @@ export function DashboardEmpresaPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-[#1a3a5c]">Chamados Recentes</CardTitle>
-            <CardDescription>Últimas solicitações abertas pela sua empresa</CardDescription>
+        <Card className="lg:col-span-2 border-none shadow-md overflow-hidden bg-white">
+          <CardHeader className="bg-[#1a3a5c]/5 border-b pt-10 pb-8">
+            <div className="flex flex-col items-center justify-center text-center gap-4">
+              <div className="bg-[#7ac142]/10 p-2.5 rounded-full">
+                <ClipboardList className="size-5 text-[#7ac142]" />
+              </div>
+              <div className="space-y-1">
+                <CardTitle className="text-xl font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
+                <CardDescription className="text-xs">Últimas solicitações abertas pela sua empresa</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]/5">
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">ID</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamado</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Solicitante</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Prioridade</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Data</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
-                      <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b">
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">ID</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Chamado</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Solicitante</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Prioridade</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Data</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentTickets.map((ticket) => (
+                  <TableRow key={ticket.id} className="hover:bg-gray-50/80 transition-colors group">
+                    <TableCell className="py-4">
+                      <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
                         CH-{ticket.id.toString().padStart(3, '0')}
-                      </TableCell>
-                      <TableCell className="font-medium border border-[#1a3a5c]/10">
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <span className="text-sm font-medium text-gray-700 max-w-[150px] truncate block">
                         {ticket.titulo}
-                      </TableCell>
-                      <TableCell className="border border-[#1a3a5c]/10">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-medium">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
-                            {ticket.solicitante_nivel && (
-                              <Badge variant="outline" className="h-4 px-1 text-[10px] border-[#3ba5d8]/30 text-[#3ba5d8] font-semibold uppercase">
-                                {ticket.solicitante_nivel}
-                              </Badge>
-                            )}
-                          </div>
-                          {ticket.email_solicitante && <span className="text-[10px] text-muted-foreground">{ticket.email_solicitante}</span>}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-[#1a3a5c]">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
+                          {ticket.solicitante_nivel && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] border-[#3ba5d8]/30 text-[#3ba5d8] font-extrabold uppercase bg-white">
+                              {ticket.solicitante_nivel}
+                            </Badge>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="border border-[#1a3a5c]/10">
-                        <Badge variant="outline" className={prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"}>
-                          {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="border border-[#1a3a5c]/10">
-                        <Badge className={statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"}>
-                          {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm border border-[#1a3a5c]/10">
-                        {formatDate(ticket.data_abertura)}
-                      </TableCell>
-                      <TableCell className="text-right border border-[#1a3a5c]/10">
-                        <Button variant="ghost" size="sm" className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10">
-                          <Eye className="size-4 mr-2" />
-                          Detalhes
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <Badge variant="outline" className={`${prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"} rounded-full px-3`}>
+                        {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <Badge className={`${statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"} shadow-none border-none rounded-full px-3`}>
+                        {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(ticket.data_abertura).split(' ')[0]}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(ticket.data_abertura).split(' ')[1]}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 text-left">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
+                        onClick={() => onViewTicket(ticket)}
+                      >
+                        <Eye className="size-4 mr-1.5" />
+                        Ver
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 
@@ -263,6 +302,128 @@ export function DashboardEmpresaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal Detalhes */}
+      <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1a3a5c]">
+              {chamadoSelecionado?.id} - {chamadoSelecionado?.titulo}
+            </DialogTitle>
+            <DialogDescription>
+              Detalhes completos do chamado
+            </DialogDescription>
+          </DialogHeader>
+          
+          {chamadoSelecionado && (
+            <Tabs defaultValue="detalhes">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                <TabsTrigger value="anexos">Anexos ({chamadoSelecionado?.anexos?.length ?? 0})</TabsTrigger>
+                <TabsTrigger value="historico">Histórico</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="detalhes" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Tipo</p>
+                    <Badge variant="outline">
+                      {chamadoSelecionado.tipo === "incidente" ? "Incidente" : "Solicitação"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Prioridade</p>
+                    <Badge className={prioridadeConfig[String(chamadoSelecionado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
+                      {prioridadeConfig[String(chamadoSelecionado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.label || chamadoSelecionado.prioridade}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge className={statusConfig[String(chamadoSelecionado.status).toLowerCase() as keyof typeof statusConfig]?.cor}>
+                      {statusConfig[String(chamadoSelecionado.status).toLowerCase() as keyof typeof statusConfig]?.label || chamadoSelecionado.status}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Data de Abertura</p>
+                    <p className="text-sm font-medium">{formatDate(chamadoSelecionado.data_abertura ?? chamadoSelecionado.dataAbertura)}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Equipamento</p>
+                  <p className="text-sm font-medium">
+                    {(() => {
+                      const id = chamadoSelecionado.equipamento_id ?? chamadoSelecionado.equipamentoId ?? null
+                      if (!id) return "Não informado"
+                      const eq = equipamentosById[String(id)]
+                      if (eq) return `${eq.nome}${eq.patrimonio ? ` (${eq.patrimonio})` : ""}`
+                      return `ID ${id}`
+                    })()}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Solicitante</p>
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium">{chamadoSelecionado.nome_solicitante || chamadoSelecionado.solicitante_nome || "N/A"}</p>
+                    {chamadoSelecionado.email_solicitante && (
+                      <p className="text-xs text-muted-foreground">{chamadoSelecionado.email_solicitante}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Responsável</p>
+                  <p className="text-sm font-medium text-[#3ba5d8]">
+                    {chamadoSelecionado.atribuido_a_nome || "Aguardando Atribuição"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Descrição</p>
+                  <p className="text-sm bg-gray-50 p-3 rounded-lg">{chamadoSelecionado.descricao}</p>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="anexos" className="mt-4">
+                {(chamadoSelecionado?.anexos?.length ?? 0) > 0 ? (
+                  <div className="space-y-2">
+                    {(chamadoSelecionado?.anexos ?? []).map((anexo: any, index: number) => (
+                      <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <Paperclip className="size-4 text-[#3ba5d8]" />
+                        <span className="text-sm">{anexo}</span>
+                        <Button variant="ghost" size="sm" className="ml-auto">
+                          Baixar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum anexo neste chamado
+                  </p>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="historico" className="mt-4">
+                <div className="space-y-3">
+                  {(chamadoSelecionado?.historico ?? []).map((item: any, index: number) => (
+                    <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0">
+                        <div className="size-8 rounded-full bg-[#3ba5d8]/20 flex items-center justify-center">
+                          <History className="size-4 text-[#3ba5d8]" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.acao}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(item.data)} - {item.usuario}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

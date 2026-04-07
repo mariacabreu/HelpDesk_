@@ -598,12 +598,12 @@ export function ChamadosPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-4">
             <Button variant="outline" onClick={() => setChamadoParaEscalonar(null)} disabled={escalonando}>
               Cancelar
             </Button>
             <Button 
-              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2" 
+              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2 px-6" 
               onClick={escalonarChamadoConfirmado}
               disabled={escalonando}
             >
@@ -636,12 +636,12 @@ export function ChamadosPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="mt-4 gap-4">
             <Button variant="outline" onClick={() => setConfirmarAcao(null)} disabled={acaoLoading}>
               Cancelar
             </Button>
             <Button 
-              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6`}
               onClick={executarAcaoConfirmada}
               disabled={acaoLoading}
             >

@@ -238,7 +238,7 @@ export function EscalonadosPage() {
               </Select>
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-4">
               <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2" onClick={fetchEscalonados}>
                 <Search className="size-4" />
                 Filtrar
@@ -510,12 +510,12 @@ export function EscalonadosPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-4">
             <Button variant="outline" onClick={() => setChamadoParaEscalonar(null)} disabled={escalonando}>
               Cancelar
             </Button>
             <Button 
-              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2" 
+              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2 px-6" 
               onClick={escalonarChamadoConfirmado}
               disabled={escalonando}
             >
@@ -542,12 +542,12 @@ export function EscalonadosPage() {
               {confirmarAcao?.tipo === 'aberto' && "Deseja reabrir este chamado para novo atendimento?"}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="mt-4 gap-4">
             <Button variant="outline" onClick={() => setConfirmarAcao(null)} disabled={acaoLoading}>
               Cancelar
             </Button>
             <Button 
-              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6`}
               onClick={executarAcaoConfirmada}
               disabled={acaoLoading}
             >

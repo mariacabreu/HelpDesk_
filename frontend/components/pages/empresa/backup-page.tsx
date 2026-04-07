@@ -289,19 +289,19 @@ export function BackupPage() {
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[100px] text-primary font-semibold">ID</TableHead>
-                  <TableHead className="w-[180px] text-primary font-semibold">Data/Hora</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Tipo</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Tamanho</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Duração</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Status</TableHead>
-                  <TableHead className="w-[150px] text-right text-primary font-semibold">Ações</TableHead>
+                  <TableHead className="w-[80px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">ID</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Data/Hora</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tipo</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tamanho</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Duração</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Status</TableHead>
+                  <TableHead className="w-[150px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground border-border">
                       Carregando histórico...
                     </TableCell>
                   </TableRow>
@@ -310,37 +310,46 @@ export function BackupPage() {
                     const config = statusConfig[backup.status as keyof typeof statusConfig]
                     const IconStatus = config.icon
                     return (
-                      <TableRow key={backup.id} className="data-table-row">
-                        <TableCell className="font-mono text-sm font-medium text-primary">{backup.id}</TableCell>
-                        <TableCell className="font-mono text-sm">{formatDate(backup.data)}</TableCell>
-                        <TableCell className="capitalize">{backup.tipo}</TableCell>
-                        <TableCell>{backup.tamanho}</TableCell>
-                        <TableCell>{backup.duracao}</TableCell>
-                        <TableCell>
-                          <Badge className={config.cor}>
+                      <TableRow key={backup.id} className="data-table-row group">
+                        <TableCell className="py-4 text-left">
+                          <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
+                            {backup.id}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4 text-left">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(backup.data).split(' ')[0]}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(backup.data).split(' ')[1]}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="capitalize text-left text-sm text-gray-600">{backup.tipo}</TableCell>
+                        <TableCell className="text-left text-sm font-medium text-gray-700">{backup.tamanho}</TableCell>
+                        <TableCell className="text-left text-sm text-gray-500">{backup.duracao}</TableCell>
+                        <TableCell className="text-left">
+                          <Badge className={`${config.cor} rounded-full px-3 text-[10px] shadow-none border-none`}>
                             <IconStatus className="size-3 mr-1" />
                             {config.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                        <TableCell className="py-4 text-left">
+                          <div className="flex justify-start gap-2">
                             {backup.status === "concluido" && (
                               <>
                                 <Button 
-                                  variant="outline" 
-                                  size="icon" 
-                                  title="Download"
-                                  className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
                                 >
-                                  <Download className="size-4 text-primary" />
+                                  <Download className="size-4 mr-1.5" />
+                                  Baixar
                                 </Button>
                                 <Button 
-                                  variant="outline" 
-                                  size="icon" 
-                                  title="Restaurar"
-                                  className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-green-50 hover:border-green-500/50 transition-all hover:scale-110"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-green-600 hover:text-green-600 hover:bg-green-50 h-8 px-2"
                                 >
-                                  <Upload className="size-4 text-green-600" />
+                                  <Upload className="size-4 mr-1.5" />
+                                  Restaurar
                                 </Button>
                               </>
                             )}

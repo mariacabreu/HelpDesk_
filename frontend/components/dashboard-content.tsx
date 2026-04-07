@@ -135,50 +135,57 @@ export function DashboardContent() {
       </div>
 
       {/* Chamados Recentes */}
-      <Card className="border-[#1a3a5c]/10">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-[#1a3a5c]">Chamados Recentes</CardTitle>
-              <CardDescription>Últimos chamados atribuídos a você</CardDescription>
+      <Card className="border-none shadow-md overflow-hidden bg-white">
+        <CardHeader className="bg-[#1a3a5c]/5 border-b pt-10 pb-8">
+          <div className="flex flex-col items-center justify-center text-center gap-4">
+            <div className="bg-[#7ac142]/10 p-2.5 rounded-full">
+              <TrendingUp className="size-5 text-[#7ac142]" />
             </div>
-            <div className="flex items-center gap-2 text-[#7ac142]">
-              <TrendingUp className="size-4" />
-              <span className="text-sm font-medium">+12% esta semana</span>
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
+              <CardDescription className="text-xs">Últimos chamados atribuídos a você</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 text-[#7ac142] bg-[#7ac142]/10 px-3 py-1 rounded-full mt-2">
+              <TrendingUp className="size-3" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">+12% esta semana</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#1a3a5c]/10">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-[#1a3a5c]/70">ID</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-[#1a3a5c]/70">Título</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-[#1a3a5c]/70">Prioridade</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-[#1a3a5c]/70">Status</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-[#1a3a5c]/70">SLA</th>
+                <tr className="border-b">
+                  <th className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 px-4 text-left">ID</th>
+                  <th className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 px-4 text-left">Título</th>
+                  <th className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 px-4 text-left">Prioridade</th>
+                  <th className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 px-4 text-left">Status</th>
+                  <th className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 px-4 text-left">SLA</th>
                 </tr>
               </thead>
               <tbody>
                 {recentTickets.map((ticket) => (
                   <tr
                     key={ticket.id}
-                    className="border-b border-[#1a3a5c]/5 hover:bg-[#3ba5d8]/5 transition-colors cursor-pointer"
+                    className="hover:bg-gray-50/80 transition-colors cursor-pointer border-b last:border-0"
                   >
-                    <td className="py-3 px-2 text-sm font-mono text-[#3ba5d8]">{ticket.id}</td>
-                    <td className="py-3 px-2 text-sm text-[#1a3a5c]">{ticket.title}</td>
-                    <td className="py-3 px-2">
-                      <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                    <td className="py-4 px-4">
+                      <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
+                        {ticket.id}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-sm font-medium text-gray-700">{ticket.title}</td>
+                    <td className="py-4 px-4">
+                      <Badge variant="outline" className={`${getPriorityColor(ticket.priority)} rounded-full px-3`}>
                         {ticket.priority}
                       </Badge>
                     </td>
-                    <td className="py-3 px-2">
-                      <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                    <td className="py-4 px-4">
+                      <Badge className={`${getStatusColor(ticket.status)} shadow-none border-none rounded-full px-3`}>
                         {ticket.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-2 text-sm text-[#1a3a5c]/60">{ticket.sla}</td>
+                    <td className="py-4 px-4 text-xs font-semibold text-gray-500">{ticket.sla}</td>
                   </tr>
                 ))}
               </tbody>

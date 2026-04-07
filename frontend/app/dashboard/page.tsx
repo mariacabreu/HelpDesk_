@@ -73,11 +73,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handleRoleChange = (role: "suporte" | "empresa") => {
-    setUserRole(role)
-    setActiveTab(role === "suporte" ? "dashboard-suporte" : "dashboard-empresa")
-  }
-
   return (
     <SidebarProvider className="h-screen overflow-hidden">
       {userRole === "suporte" ? (
@@ -89,11 +84,13 @@ export default function DashboardPage() {
         <DashboardHeader 
           userId={userData?.id}
           userRole={userRole} 
-          onRoleChange={handleRoleChange} 
           userName={userRole === "empresa" ? userData?.empresa?.nome_fantasia : userData?.nome}
           userEmail={userRole === "empresa" ? userData?.empresa?.email : userData?.email}
           userCargo={userRole === "empresa" ? "Administrador Empresa" : userData?.cargo}
           userNivel={userData?.nivel}
+          userLogin={userData?.login}
+          userSetor={userData?.setor}
+          empresaData={userData?.empresa}
         />
         <main className="flex-1 overflow-auto p-4 lg:p-6 bg-gray-50/50">
           <div className="max-w-7xl mx-auto h-full">

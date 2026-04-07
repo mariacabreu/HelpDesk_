@@ -304,13 +304,13 @@ export function MeusChamadosPage() {
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[100px] text-primary font-semibold">Nº</TableHead>
-                  <TableHead className="text-primary font-semibold">Título</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Tipo</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Prioridade</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Status</TableHead>
-                  <TableHead className="w-[140px] text-primary font-semibold">Data Abertura</TableHead>
-                  <TableHead className="w-[180px] text-right text-primary font-semibold">Ações</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Nº</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Título</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tipo</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Prioridade</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Status</TableHead>
+                  <TableHead className="w-[140px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Data Abertura</TableHead>
+                  <TableHead className="w-[180px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -322,37 +322,45 @@ export function MeusChamadosPage() {
                   </TableRow>
                 ) : chamadosFiltrados.length > 0 ? (
                   chamadosFiltrados.map((chamado) => (
-                    <TableRow key={chamado.id} className="data-table-row">
-                      <TableCell className="font-mono font-medium">CH-{chamado.id.toString().padStart(3, '0')}</TableCell>
-                      <TableCell className="font-medium">{chamado.titulo}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
+                    <TableRow key={chamado.id} className="data-table-row group">
+                      <TableCell className="py-4 text-left">
+                        <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
+                          CH-{chamado.id.toString().padStart(3, '0')}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4 text-left font-medium text-sm text-gray-700">{chamado.titulo}</TableCell>
+                      <TableCell className="py-4 text-left">
+                        <Badge variant="outline" className="capitalize text-[10px]">
                           {chamado.tipo}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge className={prioridadeConfig[String(chamado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.cor}>
+                      <TableCell className="py-4 text-left">
+                        <Badge className={`${prioridadeConfig[String(chamado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.cor} rounded-full px-3 text-[10px]`}>
                           {prioridadeConfig[String(chamado.prioridade).toLowerCase() as keyof typeof prioridadeConfig]?.label || chamado.prioridade}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge className={statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.cor || "bg-gray-100 text-gray-800"}>
+                      <TableCell className="py-4 text-left">
+                        <Badge className={`${statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.cor || "bg-gray-100 text-gray-800"} rounded-full px-3 text-[10px] shadow-none border-none`}>
                           {statusConfig[String(chamado.status).toLowerCase() as keyof typeof statusConfig]?.label || (chamado.status ? (chamado.status.charAt(0).toUpperCase() + chamado.status.slice(1)) : "N/A")}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(chamado.data_abertura)}
+                      <TableCell className="py-4 text-left">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(chamado.data_abertura).split(' ')[0]}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(chamado.data_abertura).split(' ')[1]}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      <TableCell className="py-4 text-left">
+                        <div className="flex justify-start gap-2">
                           <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
                             title="Visualizar" 
                             onClick={() => abrirDetalhes(chamado)}
                           >
-                            <Eye className="size-4 text-[#3ba5d8]" />
+                            <Eye className="size-4 mr-1.5" />
+                            Ver
                           </Button>
                           <Button 
                             variant="outline" 

@@ -73,11 +73,11 @@ export function LoginForm({ onForgotPassword, onRegisterCompany, onRegisterEmplo
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="login">Login</Label>
+            <Label htmlFor="login">E-mail ou Login</Label>
             <Input
               id="login"
               type="text"
-              placeholder="Digite seu login"
+              placeholder="Digite seu e-mail ou login"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
               required

@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
-  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw
+  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw, ShieldCheck
 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -380,46 +380,50 @@ export function AuditoriaPage() {
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[160px] text-primary font-semibold">Data/Hora</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Usuário</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Módulo</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Ação</TableHead>
-                  <TableHead className="text-primary font-semibold">Descrição</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">IP</TableHead>
-                  <TableHead className="w-[80px] text-right text-primary font-semibold">Ações</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Data/Hora</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Módulo</TableHead>
+                  <TableHead className="w-[150px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Usuário</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ação</TableHead>
+                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">IP</TableHead>
+                  <TableHead className="w-[80px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {registrosFiltrados.map((registro) => {
                   const ModuloIcon = moduloIcons[registro.modulo as keyof typeof moduloIcons] || FileText
                   return (
-                    <TableRow key={registro.id} className="data-table-row">
-                      <TableCell className="font-mono text-xs">{formatDate(registro.timestamp)}</TableCell>
-                      <TableCell className="font-medium">{registro.usuario}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+                    <TableRow key={registro.id} className="data-table-row group">
+                      <TableCell className="py-4 text-left">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(registro.timestamp).split(' ')[0]}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(registro.timestamp).split(' ')[1]}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                           <ModuloIcon className="size-4 text-primary" />
                           {registro.modulo}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge className={acaoConfig[registro.acao as keyof typeof acaoConfig]?.cor}>
+                      <TableCell className="font-bold text-left text-sm text-[#1a3a5c]">{registro.usuario}</TableCell>
+                      <TableCell className="text-left">
+                        <Badge className={`${acaoConfig[registro.acao as keyof typeof acaoConfig]?.cor} rounded-full px-2 text-[9px] shadow-none border-none`}>
                           {registro.acao}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{registro.descricao}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{registro.ip}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-mono text-xs text-muted-foreground text-left">{registro.ip}</TableCell>
+                      <TableCell className="py-4 text-left">
                         <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
                           onClick={() => {
                             setRegistroSelecionado(registro)
                             setModalDetalhes(true)
                           }}
                         >
-                          <Eye className="size-4 text-primary" />
+                          <Eye className="size-4 mr-1.5" />
+                          Ver
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -431,68 +435,66 @@ export function AuditoriaPage() {
         </CardContent>
       </Card>
 
-      {/* Modal Detalhes */}
+      {/* Modal Detalhes da Auditoria */}
       <Dialog open={modalDetalhes} onOpenChange={setModalDetalhes}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Detalhes da Auditoria</DialogTitle>
-            <DialogDescription>{registroSelecionado?.id}</DialogDescription>
+            <DialogTitle className="text-[#1a3a5c] flex items-center gap-2">
+              <Shield className="size-5 text-[#7ac142]" />
+              Detalhes da Auditoria
+            </DialogTitle>
+            <DialogDescription>
+              Registro detalhado de auditoria de segurança
+            </DialogDescription>
           </DialogHeader>
           
           {registroSelecionado && (
-            <div className="space-y-4">
+            <div className="space-y-6 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Clock className="size-4 text-[#3ba5d8]" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Data/Hora</p>
-                    <p className="text-sm font-medium">{registroSelecionado.timestamp}</p>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Data e Hora</p>
+                  <p className="text-sm font-bold text-[#1a3a5c]">{formatDate(registroSelecionado.timestamp)}</p>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <User className="size-4 text-[#3ba5d8]" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Usuário</p>
-                    <p className="text-sm font-medium">{registroSelecionado.usuario}</p>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">IP de Origem</p>
+                  <p className="text-sm font-mono text-gray-600">{registroSelecionado.ip}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Módulo Afetado</p>
+                  <p className="text-sm font-medium">{registroSelecionado.modulo}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipo de Ação</p>
+                  <Badge className={acaoConfig[registroSelecionado.acao as keyof typeof acaoConfig]?.cor}>
+                    {registroSelecionado.acao}
+                  </Badge>
                 </div>
               </div>
               
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Descrição da Ação</p>
-                <p className="text-sm font-medium">{registroSelecionado.descricao}</p>
+              <div className="space-y-1 pt-4 border-t">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Usuário Responsável</p>
+                <div className="flex items-center gap-2">
+                  <div className="size-8 rounded-full bg-[#7ac142]/10 flex items-center justify-center">
+                    <User className="size-4 text-[#7ac142]" />
+                  </div>
+                  <p className="text-sm font-bold text-[#1a3a5c]">{registroSelecionado.usuario}</p>
+                </div>
               </div>
 
-              <Tabs defaultValue="depois">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="antes">Antes</TabsTrigger>
-                  <TabsTrigger value="depois">Depois</TabsTrigger>
-                </TabsList>
-                <TabsContent value="antes" className="mt-4">
-                  {registroSelecionado.detalhes.antes ? (
-                    <pre className="p-4 bg-red-50 rounded-lg text-sm overflow-auto">
-                      {JSON.stringify(registroSelecionado.detalhes.antes, null, 2)}
-                    </pre>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      Nenhum valor anterior (registro criado)
-                    </p>
-                  )}
-                </TabsContent>
-                <TabsContent value="depois" className="mt-4">
-                  {registroSelecionado.detalhes.depois ? (
-                    <pre className="p-4 bg-green-50 rounded-lg text-sm overflow-auto">
-                      {JSON.stringify(registroSelecionado.detalhes.depois, null, 2)}
-                    </pre>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      Nenhum valor posterior (registro excluído)
-                    </p>
-                  )}
-                </TabsContent>
-              </Tabs>
+              <div className="space-y-1 pt-4 border-t">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Descrição do Evento</p>
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <p className="text-sm text-gray-700 leading-relaxed">{registroSelecionado.descricao}</p>
+                </div>
+              </div>
             </div>
           )}
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setModalDetalhes(false)}>
+              Fechar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

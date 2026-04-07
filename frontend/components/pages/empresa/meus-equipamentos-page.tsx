@@ -323,14 +323,14 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[80px] text-primary font-semibold border-border">ID</TableHead>
-                  <TableHead className="text-primary font-semibold border-border">Equipamento</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold border-border">Tipo</TableHead>
-                  <TableHead className="w-[130px] text-primary font-semibold border-border">Patrimônio</TableHead>
-                  <TableHead className="w-[150px] text-primary font-semibold border-border">Modelo</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold border-border">Status</TableHead>
-                  <TableHead className="w-[80px] text-primary font-semibold border-border">Chamados</TableHead>
-                  <TableHead className="w-[180px] text-right text-primary font-semibold border-border">Ações</TableHead>
+                  <TableHead className="w-[80px] text-primary font-semibold border-border text-left">ID</TableHead>
+                  <TableHead className="text-primary font-semibold border-border text-left">Equipamento</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Tipo</TableHead>
+                  <TableHead className="w-[130px] text-primary font-semibold border-border text-left">Patrimônio</TableHead>
+                  <TableHead className="w-[150px] text-primary font-semibold border-border text-left">Modelo</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Status</TableHead>
+                  <TableHead className="w-[80px] text-primary font-semibold border-border text-left">Chamados</TableHead>
+                  <TableHead className="w-[200px] text-primary font-semibold border-border text-left">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,8 +346,8 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                     const config = statusConfig[String(eq.status || "").toLowerCase() as keyof typeof statusConfig]
                     return (
                       <TableRow key={eq.id} className="data-table-row">
-                        <TableCell className="font-mono text-sm border-border">{eq.id}</TableCell>
-                        <TableCell className="border-border">
+                        <TableCell className="font-mono text-sm font-bold border-border text-left">{eq.id}</TableCell>
+                        <TableCell className="border-border text-left">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg">
                               <Icon className="size-4 text-primary" />
@@ -355,54 +355,58 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                             <span className="font-medium text-foreground">{eq.nome}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize border-border">{eq.tipo}</TableCell>
-                        <TableCell className="font-mono text-xs border-border">{eq.patrimonio}</TableCell>
-                        <TableCell className="border-border">{eq.modelo}</TableCell>
-                        <TableCell className="border-border">
+                        <TableCell className="capitalize border-border text-left text-sm font-medium text-gray-700">{eq.tipo}</TableCell>
+                        <TableCell className="font-bold border-border text-left text-xs text-[#1a3a5c] tracking-tight">{eq.patrimonio}</TableCell>
+                        <TableCell className="border-border text-left text-sm font-medium text-gray-700">{eq.modelo}</TableCell>
+                        <TableCell className="border-border text-left">
                           <Badge className={config?.cor || "bg-gray-100 text-gray-800"}>
                             {config?.label || eq.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center border-border">
+                        <TableCell className="text-left border-border px-4">
                           {eq.chamados_count || eq.chamados || 0}
                         </TableCell>
-                        <TableCell className="text-right border-border">
-                          <div className="flex justify-end gap-2">
+                        <TableCell className="border-border text-left">
+                          <div className="flex justify-start gap-2">
                             <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
                               title="Visualizar" 
                               onClick={() => abrirDetalhes(eq)}
                             >
-                              <Eye className="size-4 text-primary" />
+                              <Eye className="size-4 mr-1.5" />
+                              Ver
                             </Button>
                             <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-green-50 hover:border-green-500/50 transition-all hover:scale-110"
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-green-600 hover:text-green-600 hover:bg-green-50 h-8 px-2"
                               title="Abrir Chamado"
                               onClick={() => handleOpenTicket(eq.id)}
                             >
-                              <ClipboardList className="size-4 text-green-600" />
+                              <ClipboardList className="size-4 mr-1.5" />
+                              Chamado
                             </Button>
                             <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/30 transition-all hover:scale-110"
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-primary hover:text-primary hover:bg-primary/10 h-8 px-2"
                               title="Editar"
                               onClick={() => handleEditar(eq)}
                             >
-                              <Pencil className="size-4 text-primary" />
+                              <Pencil className="size-4 mr-1.5" />
+                              Editar
                             </Button>
                             <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-500 hover:bg-red-50 h-8 px-2"
                               title="Excluir"
                               onClick={() => handleExcluir(eq.id)}
                             >
-                              <XCircle className="size-4 text-red-500" />
+                              <XCircle className="size-4 mr-1.5" />
+                              Excluir
                             </Button>
                           </div>
                         </TableCell>

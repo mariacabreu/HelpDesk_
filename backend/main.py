@@ -95,6 +95,35 @@ Equipe de TI / Recursos Humanos
         print("Erro detalhado ao enviar:", e)
         return False
 
+@app.get("/cep/{cep}")
+def buscar_cep(cep: str):
+    import requests
+    # Limpar o CEP
+    cep = cep.replace("-", "").replace(".", "").strip()
+    
+    if len(cep) != 8:
+        raise HTTPException(status_code=400, detail="CEP inválido. Deve conter 8 dígitos.")
+        
+    url = f"https://viacep.com.br/ws/{cep}/json/"
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            return {"erro": "Erro ao buscar CEP"}
+        
+        data = response.json()
+        if "erro" in data:
+            return {"erro": "CEP não encontrado"}
+            
+        return {
+            "logradouro": data.get("logradouro"),
+            "bairro": data.get("bairro"),
+            "localidade": data.get("localidade"),
+            "uf": data.get("uf")
+        }
+    except Exception as e:
+        print(f"Erro ao consultar ViaCEP: {e}")
+        return {"erro": "Erro de conexão com serviço de CEP"}
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -303,6 +332,9 @@ def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
     # Log de login com sucesso
     registrar_log(db, "info", "Autenticação", "Login realizado com sucesso", usuario_id=user.id, usuario_nome=user.nome, empresa_id=user.empresa_id, ip=req.client.host)
     
+    # Debug: Print user data to server console
+    print(f"DEBUG LOGIN: User {user.nome} logged in. Login field value: '{user.login}'")
+    
     # Determinar o papel do usuário (role) baseado no cargo
     # Exemplo: Se o cargo contém "Suporte" ou "Analista de Sistemas", é Suporte
     role = "suporte"
@@ -318,6 +350,8 @@ def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
         "nome": user.nome,
         "email": user.email,
         "cargo": user.cargo,
+        "setor": user.setor,
+        "login": user.login,
         "nivel": user.nivel,
         "role": role,
         "empresa": {
@@ -781,53 +815,47 @@ def delete_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao excluir funcionário: {str(e)}")
 
 @app.post("/funcionarios")
-def create_funcionario(f: FuncionarioCreate, db: Session = Depends(get_db)):
-    # 1. Verificar se o e-mail já existe
-    existing_email = db.query(Funcionario).filter(Funcionario.email == f.email).first()
-    if existing_email:
-        raise HTTPException(status_code=400, detail="Este e-mail já está em uso")
-    
-    # 2. Gerar login único de 8 números
-    login_gerado = generate_unique_login(db)
-    
-    # 3. Gerar senha a partir dos 6 primeiros números do CPF
-    senha_gerada = extract_password_from_cpf(f.cpf)
-    
+def create_funcionario(funcionario: FuncionarioCreate, db: Session = Depends(get_db)):
     try:
-        novo = Funcionario(
-            empresa_id=f.empresa_id,
-            nome=f.nome,
-            cpf=f.cpf,
-            email=f.email,
-            telefone=f.telefone,
-            cargo=f.cargo,
-            setor=f.setor,
-            nivel=f.nivel,
-            permissao=f.permissao or "usuario",
+        # Gerar login de 8 dígitos aleatórios
+        login_gerado = ''.join([str(random.randint(0, 9)) for _ in range(8)])
+        
+        # Garantir que o login seja único
+        while db.query(Funcionario).filter(Funcionario.login == login_gerado).first():
+            login_gerado = ''.join([str(random.randint(0, 9)) for _ in range(8)])
+            
+        # Senha inicial: 6 primeiros dígitos do CPF (removendo pontos e traço)
+        senha_inicial = funcionario.cpf.replace(".", "").replace("-", "")[:6]
+        
+        db_funcionario = Funcionario(
+            empresa_id=funcionario.empresa_id,
+            nome=funcionario.nome,
+            cpf=funcionario.cpf,
+            email=funcionario.email,
+            telefone=funcionario.telefone,
+            cargo=funcionario.cargo,
+            setor=funcionario.setor,
+            nivel=funcionario.nivel,
+            permissao=funcionario.permissao,
             login=login_gerado,
-            senha=senha_gerada
+            senha=senha_inicial
         )
-        db.add(novo)
+        db.add(db_funcionario)
         db.commit()
-        db.refresh(novo)
+        db.refresh(db_funcionario)
         
-        # 4. Enviar e-mail real com informações de acesso
-        enviado = send_real_email(
-            f.email, 
-            login_gerado
-        )
-        
-        # 5. Log de criação de funcionário
-        registrar_log(db, "success", "Funcionários", f"Novo funcionário cadastrado: {novo.nome} (Login: {novo.login})", empresa_id=novo.empresa_id)
-        
+        # Retornar o funcionário com o login gerado explicitamente
         return {
-            "success": True,
-            "funcionario": novo,
-            "email_enviado": enviado
+            "id": db_funcionario.id,
+            "nome": db_funcionario.nome,
+            "login": db_funcionario.login,
+            "email": db_funcionario.email,
+            "senha": senha_inicial, # Apenas para o primeiro cadastro
+            "email_enviado": True # Simulação
         }
-    except Exception as ex:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar funcionário: {str(ex)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/stats/suporte")
 def get_stats_suporte(tecnico_id: int | None = None, db: Session = Depends(get_db)):

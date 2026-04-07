@@ -106,7 +106,9 @@ export function DashboardSuportePage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-[#1a3a5c]">Dashboard de Suporte</h1>
-        <p className="text-muted-foreground">Visão geral operacional da equipe de TI</p>
+        <p className="text-muted-foreground">
+          {userData?.empresa?.nome_fantasia || "SwiftDesk"} - Gestão de chamados
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -129,66 +131,75 @@ export function DashboardSuportePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-[#1a3a5c]">Chamados Recentes</CardTitle>
-            <CardDescription>Últimas solicitações recebidas</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="space-y-4">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[#1a3a5c]/5">
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">ID</TableHead>
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">Solicitante</TableHead>
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">Chamado</TableHead>
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">Prioridade</TableHead>
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">Status</TableHead>
-                      <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">Data</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(stats?.recentes || []).map((ticket: any) => (
-                      <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
-                        <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10 text-center">
-                          CH-{ticket.id.toString().padStart(3, '0')}
-                        </TableCell>
-                        <TableCell className="border border-[#1a3a5c]/10 text-center">
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm font-medium">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
-                              {ticket.solicitante_nivel && (
-                                <Badge variant="outline" className="h-4 px-1 text-[10px] border-[#3ba5d8]/30 text-[#3ba5d8] font-semibold uppercase">
-                                  {ticket.solicitante_nivel}
-                                </Badge>
-                              )}
-                            </div>
-                            {ticket.email_solicitante && <span className="text-[10px] text-muted-foreground">{ticket.email_solicitante}</span>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium border border-[#1a3a5c]/10 text-center">
-                          {ticket.titulo}
-                        </TableCell>
-                        <TableCell className="border border-[#1a3a5c]/10 text-center">
-                          <Badge variant="outline" className={`${prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"} mx-auto`}>
-                            {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="border border-[#1a3a5c]/10 text-center">
-                          <Badge className={`${statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"} mx-auto`}>
-                            {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm border border-[#1a3a5c]/10 text-center">
-                          {formatDate(ticket.data_abertura)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+        <Card className="lg:col-span-2 border-none shadow-md overflow-hidden bg-white">
+          <CardHeader className="bg-[#1a3a5c]/5 border-b pt-10 pb-8">
+            <div className="flex flex-col items-center justify-center text-center gap-4">
+              <div className="bg-[#3ba5d8]/10 p-2.5 rounded-full">
+                <TrendingUp className="size-5 text-[#3ba5d8]" />
+              </div>
+              <div className="space-y-1">
+                <CardTitle className="text-xl font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
+                <CardDescription className="text-xs">Últimas solicitações recebidas para atendimento</CardDescription>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b">
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">ID</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Solicitante</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Chamado</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Prioridade</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Data</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(stats?.recentes || []).map((ticket: any) => (
+                  <TableRow key={ticket.id} className="hover:bg-gray-50/80 transition-colors group">
+                    <TableCell className="text-center py-4">
+                      <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
+                        CH-{ticket.id.toString().padStart(3, '0')}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-[#1a3a5c]">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
+                          {ticket.solicitante_nivel && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] border-[#3ba5d8]/30 text-[#3ba5d8] font-extrabold uppercase bg-white">
+                              {ticket.solicitante_nivel}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <span className="text-sm font-medium text-gray-700 max-w-[200px] truncate block mx-auto">
+                        {ticket.titulo}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Badge variant="outline" className={`${prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"} mx-auto rounded-full px-3`}>
+                        {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Badge className={`${statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"} mx-auto shadow-none border-none rounded-full px-3`}>
+                        {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-xs font-semibold text-gray-600">{formatDate(ticket.data_abertura).split(' ')[0]}</span>
+                        <span className="text-[10px] text-muted-foreground">{formatDate(ticket.data_abertura).split(' ')[1]}</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 

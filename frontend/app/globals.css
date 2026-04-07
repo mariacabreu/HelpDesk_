@@ -130,8 +130,21 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Padronização de números e textos para todas as telas */
+  input, button, table, div, span, p, h1, h2, h3, h4, h5, h6 {
+    @apply antialiased tracking-tight;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+    letter-spacing: -0.02em;
   }
 }

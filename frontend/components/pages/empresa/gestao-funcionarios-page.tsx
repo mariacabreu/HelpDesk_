@@ -49,7 +49,6 @@ export function GestaoFuncionariosPage() {
     cpf: "",
     email: "",
     telefone: "",
-    cargo: "",
     setor: "",
     nivel: "n1",
     permissao: "usuario"
@@ -61,7 +60,6 @@ export function GestaoFuncionariosPage() {
     cpf: "",
     email: "",
     telefone: "",
-    cargo: "",
     setor: "",
     nivel: "",
     permissao: "",
@@ -115,7 +113,7 @@ export function GestaoFuncionariosPage() {
         cpf: novoFunc.cpf,
         email: novoFunc.email,
         telefone: novoFunc.telefone,
-        cargo: novoFunc.cargo,
+        cargo: novoFunc.setor, // O departamento agora é o cargo
         setor: novoFunc.setor,
         nivel: novoFunc.nivel,
         permissao: novoFunc.permissao
@@ -150,7 +148,7 @@ export function GestaoFuncionariosPage() {
 
       setModalCadastro(false)
       setNovoFunc({
-        nome: "", cpf: "", email: "", telefone: "", cargo: "", setor: "",
+        nome: "", cpf: "", email: "", telefone: "", setor: "",
         nivel: "n1", permissao: "usuario"
       })
       fetchFuncionarios()
@@ -173,10 +171,15 @@ export function GestaoFuncionariosPage() {
 
     setSaving(true)
     try {
+      const payload = {
+        ...editFunc,
+        cargo: editFunc.setor // O departamento agora é o cargo
+      }
+      
       const response = await fetch(`/api/funcionarios/${editFunc.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editFunc)
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -394,8 +397,7 @@ export function GestaoFuncionariosPage() {
                 <TableRow className="data-table-header">
                   <TableHead className="text-primary font-semibold">Funcionário</TableHead>
                   <TableHead className="w-[200px] text-primary font-semibold">E-mail</TableHead>
-                  <TableHead className="w-[150px] text-primary font-semibold">Cargo</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Departamento</TableHead>
+                  <TableHead className="w-[180px] text-primary font-semibold">Departamento</TableHead>
                   <TableHead className="w-[120px] text-primary font-semibold">Permissão</TableHead>
                   <TableHead className="w-[100px] text-primary font-semibold">Status</TableHead>
                   <TableHead className="w-[140px] text-right text-primary font-semibold">Ações</TableHead>
@@ -427,7 +429,6 @@ export function GestaoFuncionariosPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground border border-[#1a3a5c]/10">{funcionario.email}</TableCell>
-                      <TableCell className="border border-[#1a3a5c]/10">{funcionario.cargo}</TableCell>
                       <TableCell className="border border-[#1a3a5c]/10">{funcionario.setor}</TableCell>
                       <TableCell className="border border-[#1a3a5c]/10">
                         <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.cor || "bg-blue-100 text-blue-800"}>
@@ -465,7 +466,6 @@ export function GestaoFuncionariosPage() {
                                 cpf: funcionario.cpf,
                                 email: funcionario.email,
                                 telefone: funcionario.telefone,
-                                cargo: funcionario.cargo,
                                 setor: funcionario.setor,
                                 nivel: funcionario.nivel,
                                 permissao: funcionario.permissao,
@@ -519,7 +519,7 @@ export function GestaoFuncionariosPage() {
                 </Avatar>
                 <div>
                   <p className="text-lg font-bold text-[#1a3a5c]">{funcionarioSelecionado.nome}</p>
-                  <p className="text-sm text-muted-foreground">{funcionarioSelecionado.cargo}</p>
+                  <p className="text-sm text-muted-foreground uppercase font-semibold">{funcionarioSelecionado.setor}</p>
                 </div>
               </div>
               
@@ -545,7 +545,7 @@ export function GestaoFuncionariosPage() {
                   <Building2 className="size-4 text-[#3ba5d8]" />
                   <div>
                     <p className="text-xs text-muted-foreground">Departamento</p>
-                    <p className="text-sm font-medium">{funcionarioSelecionado.setor}</p>
+                    <p className="text-sm font-medium uppercase">{funcionarioSelecionado.setor}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
@@ -644,21 +644,13 @@ export function GestaoFuncionariosPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-telefone">Telefone</Label>
                 <Input 
                   id="edit-telefone" 
                   value={editFunc.telefone}
                   onChange={(e) => setEditFunc({...editFunc, telefone: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-cargo">Cargo</Label>
-                <Input 
-                  id="edit-cargo" 
-                  value={editFunc.cargo}
-                  onChange={(e) => setEditFunc({...editFunc, cargo: e.target.value})}
                 />
               </div>
             </div>
@@ -766,7 +758,7 @@ export function GestaoFuncionariosPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="telefone-func">Telefone</Label>
                 <Input 
@@ -774,15 +766,6 @@ export function GestaoFuncionariosPage() {
                   placeholder="(11) 99999-9999" 
                   value={novoFunc.telefone}
                   onChange={(e) => setNovoFunc({...novoFunc, telefone: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cargo-func">Cargo</Label>
-                <Input 
-                  id="cargo-func" 
-                  placeholder="Ex: Analista" 
-                  value={novoFunc.cargo}
-                  onChange={(e) => setNovoFunc({...novoFunc, cargo: e.target.value})}
                 />
               </div>
             </div>
@@ -851,4 +834,3 @@ export function GestaoFuncionariosPage() {
     </div>
   )
 }
-
