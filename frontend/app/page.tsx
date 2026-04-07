@@ -64,7 +64,6 @@ export default function AuthPage() {
           {renderForm()}
           
           <p className="text-sm text-muted-foreground">
-            © 2024 SwiftDesk. Todos os direitos reservados.
           </p>
         </div>
       </div>

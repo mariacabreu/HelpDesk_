@@ -87,7 +87,7 @@ export function RelatoriosPage() {
     let y = 15
 
     doc.setFontSize(18)
-    doc.text("Relatório Geral de Gestão - HelpDesk", 14, y)
+    doc.text("Relatório Geral de Gestão - SwiftDesk", 14, y)
     y += 10
     doc.setFontSize(10)
     doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, y)

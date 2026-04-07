@@ -77,7 +77,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           />
           <div className="flex flex-col">
             <span className="font-bold text-sidebar-foreground">SwiftDesk</span>
-            <span className="text-xs text-[#7ac142]">Agile Support</span>
+            <span className="text-xs text-[#3ba5d8]">Portal Suporte</span>
           </div>
         </div>
       </SidebarHeader>

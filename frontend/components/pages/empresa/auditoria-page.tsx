@@ -193,7 +193,7 @@ export function AuditoriaPage() {
       item.ip
     ])
 
-    doc.text("Relatório de Auditoria - HelpDesk", 14, 15)
+    doc.text("Relatório de Auditoria - SwiftDesk", 14, 15)
     doc.setFontSize(10)
     doc.text(`Gerado em: ${formatDate(new Date())}`, 14, 22)
     doc.text(`Total de registros: ${registrosFiltrados.length}`, 14, 28)
