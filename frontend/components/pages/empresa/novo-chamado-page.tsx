@@ -45,12 +45,17 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
   const [novoChamadoId, setNovoChamadoId] = useState<number | null>(null)
   const [funcionariosNivel, setFuncionariosNivel] = useState<any[]>([])
   const [funcionarioSelecionadoId, setFuncionarioSelecionadoId] = useState("-1")
+  const [nomeSolicitante, setNomeSolicitante] = useState("")
+  const [emailSolicitante, setEmailSolicitante] = useState("")
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
       const user = JSON.parse(storedUser)
       setUserData(user)
+      // Removido o preenchimento automático para que os campos iniciem vazios conforme solicitado
+      setNomeSolicitante("")
+      setEmailSolicitante("")
       
       // Buscar equipamentos da empresa
       if (user.empresa?.id) {
@@ -110,6 +115,8 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       const payload = {
         empresa_id: parseInt(userData.empresa.id),
         solicitante_id: parseInt(userData.id),
+        nome_solicitante: nomeSolicitante || null,
+        email_solicitante: emailSolicitante || null,
         equipamento_id: equipamentoId === "nao-aplica" || !equipamentoId ? null : (parseInt(equipamentoId) || null),
         atribuido_a_id: parseInt(funcionarioSelecionadoId) || -1,
         titulo,
@@ -161,6 +168,8 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
     setDescricao("")
     setEquipamentoId("")
     setArquivos([])
+    setNomeSolicitante("")
+    setEmailSolicitante("")
   }
 
   return (
@@ -174,30 +183,42 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
         {/* Dados da Empresa */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-[#1a3a5c]">Dados da Empresa</CardTitle>
-            <CardDescription>Informações preenchidas automaticamente</CardDescription>
+            <CardTitle className="text-lg text-[#1a3a5c]">Dados do Solicitante</CardTitle>
+            <CardDescription>Confirme ou altere os dados de quem está abrindo o chamado</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <Building2 className="size-5 text-[#3ba5d8]" />
-                <div>
+                <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Empresa</p>
                   <p className="font-medium text-[#1a3a5c]">{userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "Empresa não identificada"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <User className="size-5 text-[#3ba5d8]" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Solicitante</p>
-                  <p className="font-medium text-[#1a3a5c]">{userData?.nome || "Usuário não identificado"}</p>
+                <div className="flex-1">
+                  <Label htmlFor="nomeSolicitante" className="text-xs text-muted-foreground font-normal">Solicitante</Label>
+                  <Input 
+                    id="nomeSolicitante"
+                    className="h-7 bg-transparent border-none p-0 focus-visible:ring-0 font-medium text-[#1a3a5c]" 
+                    value={nomeSolicitante}
+                    onChange={(e) => setNomeSolicitante(e.target.value)}
+                    placeholder="Seu nome"
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <Mail className="size-5 text-[#3ba5d8]" />
-                <div className="overflow-hidden">
-                  <p className="text-xs text-muted-foreground">E-mail</p>
-                  <p className="font-medium text-[#1a3a5c] break-all">{userData?.email || "E-mail não identificado"}</p>
+                <div className="flex-1 overflow-hidden">
+                  <Label htmlFor="emailSolicitante" className="text-xs text-muted-foreground font-normal">E-mail</Label>
+                  <Input 
+                    id="emailSolicitante"
+                    className="h-7 bg-transparent border-none p-0 focus-visible:ring-0 font-medium text-[#1a3a5c]" 
+                    value={emailSolicitante}
+                    onChange={(e) => setEmailSolicitante(e.target.value)}
+                    placeholder="seuemail@empresa.com"
+                  />
                 </div>
               </div>
             </div>

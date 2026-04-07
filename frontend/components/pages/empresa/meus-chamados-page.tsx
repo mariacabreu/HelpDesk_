@@ -132,9 +132,9 @@ export function MeusChamadosPage() {
   }, [])
 
   const chamadosFiltrados = chamados.filter(chamado => {
-    if (filtroStatus && chamado.status !== filtroStatus) return false
-    if (filtroPrioridade && chamado.prioridade !== filtroPrioridade) return false
-    if (filtroTipo && chamado.tipo !== filtroTipo) return false
+    if (filtroStatus && filtroStatus !== "todos" && chamado.status !== filtroStatus) return false
+    if (filtroPrioridade && filtroPrioridade !== "todas" && chamado.prioridade !== filtroPrioridade) return false
+    if (filtroTipo && filtroTipo !== "todos" && chamado.tipo !== filtroTipo) return false
     if (busca && !chamado.titulo.toLowerCase().includes(busca.toLowerCase()) && 
         !chamado.id.toString().includes(busca)) return false
     return true
@@ -453,6 +453,15 @@ export function MeusChamadosPage() {
                   </p>
                 </div>
                 <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Solicitante</p>
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium">{chamadoSelecionado.nome_solicitante || chamadoSelecionado.solicitante_nome || "N/A"}</p>
+                    {chamadoSelecionado.email_solicitante && (
+                      <p className="text-xs text-muted-foreground">{chamadoSelecionado.email_solicitante}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Responsável</p>
                   <p className="text-sm font-medium text-[#3ba5d8]">
                     {chamadoSelecionado.atribuido_a_nome || "Aguardando Atribuição"}
@@ -467,7 +476,7 @@ export function MeusChamadosPage() {
               <TabsContent value="anexos" className="mt-4">
                 {(chamadoSelecionado?.anexos?.length ?? 0) > 0 ? (
                   <div className="space-y-2">
-                    {(chamadoSelecionado?.anexos ?? []).map((anexo, index) => (
+                    {(chamadoSelecionado?.anexos ?? []).map((anexo: any, index: number) => (
                       <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                         <Paperclip className="size-4 text-[#3ba5d8]" />
                         <span className="text-sm">{anexo}</span>
@@ -486,7 +495,7 @@ export function MeusChamadosPage() {
               
               <TabsContent value="historico" className="mt-4">
                 <div className="space-y-3">
-                  {(chamadoSelecionado?.historico ?? []).map((item, index) => (
+                  {(chamadoSelecionado?.historico ?? []).map((item: any, index: number) => (
                     <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                       <div className="flex-shrink-0">
                         <div className="size-8 rounded-full bg-[#3ba5d8]/20 flex items-center justify-center">
