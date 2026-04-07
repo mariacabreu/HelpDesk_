@@ -128,6 +128,8 @@ class LoginRequest(BaseModel):
 class ChamadoCreate(BaseModel):
     empresa_id: int
     solicitante_id: int
+    nome_solicitante: str | None = None
+    email_solicitante: str | None = None
     equipamento_id: int | None = None
     atribuido_a_id: int | None = None # Nova coluna para atribuição direta
     titulo: str
@@ -292,6 +294,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "nome": user.nome,
         "email": user.email,
         "cargo": user.cargo,
+        "nivel": user.nivel,
         "role": role,
         "empresa": {
             "id": empresa.id,
@@ -324,15 +327,16 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
         
         atribuido_id = chamado.atribuido_a_id
         
-        # Lógica de atribuição automática aleatória se solicitado (ID -1)
-        if atribuido_id == -1:
+        # Lógica de atribuição automática aleatória (obrigatória se não houver atribuição direta)
+        if atribuido_id is None or atribuido_id == -1:
             # Buscar todos os funcionários de suporte com o nível correspondente à prioridade
+            # Por padrão, novos chamados vão para N1, a menos que a prioridade dite o contrário
             nivel_alvo = "n1"
             if chamado.prioridade.lower() == "media": nivel_alvo = "n2"
             if chamado.prioridade.lower() == "alta": nivel_alvo = "n3"
+            if chamado.prioridade.lower() == "critica": nivel_alvo = "n3"
             
-            # Busca suporte técnico (analistas) da empresa que gerencia o suporte
-            # Para este MVP, vamos buscar funcionários da mesma empresa que tenham o nível
+            # Busca suporte técnico (analistas) que tenham o nível
             suportes = db.query(Funcionario).filter(
                 Funcionario.nivel == nivel_alvo,
                 Funcionario.status == "ativo"
@@ -341,18 +345,28 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             if suportes:
                 atribuido_id = random.choice(suportes).id
             else:
-                atribuido_id = None
+                # Se não achar no nível alvo, tenta N1 como fallback
+                if nivel_alvo != "n1":
+                    suportes_n1 = db.query(Funcionario).filter(Funcionario.nivel == "n1", Funcionario.status == "ativo").all()
+                    if suportes_n1:
+                        atribuido_id = random.choice(suportes_n1).id
+                    else:
+                        atribuido_id = None
+                else:
+                    atribuido_id = None
 
         db_chamado = Chamado(
             empresa_id=chamado.empresa_id,
             solicitante_id=chamado.solicitante_id,
+            nome_solicitante=chamado.nome_solicitante,
+            email_solicitante=chamado.email_solicitante,
             equipamento_id=chamado.equipamento_id if chamado.equipamento_id and chamado.equipamento_id > 0 else None,
             atribuido_a_id=atribuido_id if atribuido_id and atribuido_id > 0 else None,
             titulo=chamado.titulo,
             descricao=chamado.descricao,
             tipo=chamado.tipo,
-            prioridade=chamado.prioridade.lower(),
-            status="aberto" if not atribuido_id else "em_atendimento"
+            prioridade=Prioridade(chamado.prioridade.lower()),
+            status=StatusChamado.ABERTO if not atribuido_id else StatusChamado.EM_ATENDIMENTO
         )
         db.add(db_chamado)
         db.flush() # Para gerar o ID do chamado antes das notificações
@@ -462,6 +476,8 @@ def format_chamado(c: Chamado):
         "solicitante_id": c.solicitante_id,
         "equipamento_id": c.equipamento_id,
         "atribuido_a_id": c.atribuido_a_id,
+        "nome_solicitante": c.nome_solicitante,
+        "email_solicitante": c.email_solicitante,
         "titulo": c.titulo,
         "descricao": c.descricao,
         "tipo": c.tipo,
@@ -498,54 +514,136 @@ def get_chamados_atribuido(tecnico_id: int, db: Session = Depends(get_db)):
 @app.get("/chamados/escalados-disponiveis/{nivel}")
 def get_escalados_disponiveis(nivel: str, db: Session = Depends(get_db)):
     nivel = nivel.lower()
+    
+    # Query base: chamados sem técnico e que não estão finalizados
+    # IMPORTANTE: Filtrar pelo valor da string no banco para evitar problemas de comparação com Enum
+    query = db.query(Chamado).filter(
+        Chamado.atribuido_a_id == None,
+        Chamado.status.notin_(["resolvido", "fechado", "cancelado"])
+    )
+    
     if nivel == "n2":
-        # N2 vê escalados de N1
-        chamados = db.query(Chamado).filter(Chamado.escalonado_por_nivel == "n1", Chamado.atribuido_a_id == None).all()
+        # N2 vê escalados por N1
+        chamados = query.filter(
+            (Chamado.escalonado_por_nivel == "n1") |
+            ((Chamado.escalonado_por_nivel == None) & (Chamado.prioridade == "media"))
+        ).all()
     elif nivel == "n3":
-        # N3 vê escalados de N1 e N2
-        chamados = db.query(Chamado).filter(Chamado.escalonado_por_nivel.in_(["n1", "n2"]), Chamado.atribuido_a_id == None).all()
+        # N3 vê escalados por N2 ou redistribuídos por N3
+        chamados = query.filter(
+            (Chamado.escalonado_por_nivel.in_(["n2", "n3"])) |
+            ((Chamado.escalonado_por_nivel == None) & (Chamado.prioridade.in_(["alta", "critica"])))
+        ).all()
     else:
-        chamados = []
+        # N1 vê novos (sem escalonamento prévio)
+        chamados = query.filter(Chamado.escalonado_por_nivel == None).all()
     
     return [format_chamado(c) for c in chamados]
 
 @app.patch("/chamados/{chamado_id}")
 def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depends(get_db)):
+    from database import HistoricoChamado
     db_chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
     if not db_chamado:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
     
     update_data = c_update.dict(exclude_unset=True)
     
-    # Mapear strings de prioridade e status para Enums se necessário
+    # Mapear strings de prioridade e status para Enums
     for key, value in update_data.items():
         if key == "prioridade" and value:
-            setattr(db_chamado, key, value.lower())
+            db_chamado.prioridade = Prioridade(value.lower())
         elif key == "status" and value:
-            setattr(db_chamado, key, value.lower())
-            if value.lower() in ["resolvido", "fechado", "cancelado"]:
+            old_status_val = db_chamado.status.value if hasattr(db_chamado.status, 'value') else str(db_chamado.status)
+            new_status_val = value.lower()
+            
+            db_chamado.status = StatusChamado(new_status_val)
+            
+            # Registrar no histórico se o status mudou
+            if old_status_val != new_status_val:
+                acao = f"Status alterado de {old_status_val} para {new_status_val}"
+                if new_status_val == "aberto" and old_status_val in ["fechado", "resolvido", "cancelado"]:
+                    acao = "Chamado reaberto"
+                
+                db.add(HistoricoChamado(
+                    chamado_id=chamado_id,
+                    acao=acao
+                ))
+
+            if new_status_val in ["resolvido", "fechado", "cancelado"]:
                 db_chamado.data_fechamento = datetime.utcnow()
-            # Notificar solicitante sobre mudança de status
-            notif = Notificacao(
+            else:
+                db_chamado.data_fechamento = None
+
+            # Notificar solicitante
+            db.add(Notificacao(
                 usuario_id=db_chamado.solicitante_id,
-                mensagem=f"Status do chamado CH-{db_chamado.id} alterado para {value.lower()}"
-            )
-            db.add(notif)
+                mensagem=f"Status do chamado CH-{db_chamado.id} alterado para {new_status_val}"
+            ))
+            
+        elif key == "escalonado_por_nivel" and value:
+            current_nivel = value.lower()
+            next_nivel = "n2"
+            if current_nivel == "n1": next_nivel = "n2"
+            elif current_nivel == "n2": next_nivel = "n3"
+            elif current_nivel == "n3": next_nivel = "n3"
+            
+            # Quando escalonamos, resetamos a atribuição para voltar ao pool
+            if "atribuido_a_id" not in update_data:
+                db_chamado.atribuido_a_id = None
+            
+            # Usar strings diretas para o banco de dados se o Enum der conflito
+            db_chamado.status = "escalado"
+            db_chamado.escalonado_por_nivel = current_nivel
+            
+            # Notificar técnicos do próximo nível
+            suportes_next = db.query(Funcionario).filter(
+                Funcionario.nivel == next_nivel,
+                Funcionario.status == "ativo"
+            ).all()
+            for s in suportes_next:
+                db.add(Notificacao(
+                    usuario_id=s.id,
+                    mensagem=f"Chamado CH-{db_chamado.id} escalonado para o pool {next_nivel.upper()}"
+                ))
+            
+            db.add(HistoricoChamado(
+                chamado_id=chamado_id,
+                acao=f"Chamado escalonado do nível {current_nivel.upper()} para {next_nivel.upper()}"
+            ))
+            
         elif key == "atribuido_a_id":
-            setattr(db_chamado, key, value)
-            if value:
-                # Notificar o técnico atribuído
-                notif = Notificacao(
-                    usuario_id=value,
-                    mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
-                )
-                db.add(notif)
-                # Notificar o solicitante
-                notif_sol = Notificacao(
-                    usuario_id=db_chamado.solicitante_id,
-                    mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
-                )
-                db.add(notif_sol)
+            old_atribuido = db_chamado.atribuido_a_id
+            db_chamado.atribuido_a_id = value
+            
+            # Se estava escalado e foi assumido
+            if str(db_chamado.status) == "escalado" and value:
+                db_chamado.status = "escalonamento_aprovado"
+            elif not db_chamado.escalonado_por_nivel and value:
+                db_chamado.status = "em_atendimento"
+                
+            if old_atribuido != value:
+                novo_tecnico = db.query(Funcionario).filter(Funcionario.id == value).first()
+                tecnico_nome = novo_tecnico.nome if novo_tecnico else "Pool"
+                acao = f"Chamado atribuído a {tecnico_nome}"
+                if db_chamado.status == StatusChamado.ESCALONAMENTO_APROVADO:
+                    acao = f"Escalonamento aceito por {tecnico_nome}"
+                
+                db.add(HistoricoChamado(
+                    chamado_id=chamado_id,
+                    acao=acao
+                ))
+                
+                    db.add(Notificacao(
+                        usuario_id=value,
+                        mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
+                    ))
+                    
+                    # Notificar o solicitante
+                    db.add(Notificacao(
+                        usuario_id=db_chamado.solicitante_id,
+                        mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
+                    ))
         else:
             setattr(db_chamado, key, value)
     
@@ -675,8 +773,12 @@ def get_stats_suporte(db: Session = Depends(get_db)):
             "id": c.id,
             "titulo": c.titulo,
             "empresa": c.empresa.nome_fantasia if c.empresa else "N/A",
+            "nome_solicitante": c.nome_solicitante,
+            "email_solicitante": c.email_solicitante,
+            "solicitante_nome": c.solicitante.nome if c.solicitante else "N/A",
             "prioridade": c.prioridade.value if hasattr(c.prioridade, 'value') else c.prioridade,
-            "status": c.status.value if hasattr(c.status, 'value') else c.status
+            "status": c.status.value if hasattr(c.status, 'value') else c.status,
+            "data_abertura": c.data_abertura
         })
     
     return {

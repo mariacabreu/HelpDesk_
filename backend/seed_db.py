@@ -92,8 +92,8 @@ def seed():
             titulo="Notebook não liga",
             descricao="O notebook parou de ligar após a última atualização do Windows.",
             tipo="Incidente",
-            prioridade=Prioridade.ALTA,
-            status=StatusChamado.ABERTO,
+            prioridade=Prioridade.ALTA.value,
+            status=StatusChamado.ABERTO.value,
             data_abertura=datetime.now(timezone.utc)
         )
         
@@ -103,8 +103,8 @@ def seed():
             titulo="Solicitação de novo software",
             descricao="Solicito a instalação do Docker Desktop para desenvolvimento.",
             tipo="Solicitação",
-            prioridade=Prioridade.MEDIA,
-            status=StatusChamado.EM_ATENDIMENTO,
+            prioridade=Prioridade.MEDIA.value,
+            status=StatusChamado.EM_ATENDIMENTO.value,
             data_abertura=datetime.now(timezone.utc)
         )
         session.add_all([chamado1, chamado2])

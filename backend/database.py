@@ -10,6 +10,8 @@ class StatusChamado(enum.Enum):
     EM_ATENDIMENTO = "em_atendimento"
     AGUARDANDO_TERCEIRO = "aguardando_terceiro"
     PENDENTE = "pendente"
+    ESCALADO = "escalado"
+    ESCALONAMENTO_APROVADO = "escalonamento_aprovado"
     RESOLVIDO = "resolvido"
     FECHADO = "fechado"
     CANCELADO = "cancelado"
@@ -98,11 +100,14 @@ class Chamado(Base):
     equipamento_id = Column(Integer, ForeignKey('equipamentos.id'), nullable=True)
     atribuido_a_id = Column(Integer, ForeignKey('funcionarios.id'), nullable=True)
     
+    nome_solicitante = Column(String(100), nullable=True)
+    email_solicitante = Column(String(100), nullable=True)
+    
     titulo = Column(String(200), nullable=False)
     descricao = Column(Text, nullable=False)
     tipo = Column(String(50)) # ex: Incidente, Solicitação, Dúvida
-    prioridade = Column(String(50), default="media")
-    status = Column(String(50), default="aberto")
+    prioridade = Column(Enum(Prioridade), default=Prioridade.MEDIA)
+    status = Column(Enum(StatusChamado), default=StatusChamado.ABERTO)
     escalonado_por_nivel = Column(String(20), nullable=True) # n1, n2
     
     data_abertura = Column(DateTime, default=datetime.utcnow)
