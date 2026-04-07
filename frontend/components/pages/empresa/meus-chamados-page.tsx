@@ -182,37 +182,37 @@ export function MeusChamadosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Meus Chamados</h1>
-        <p className="text-muted-foreground">Acompanhe e gerencie seus chamados abertos</p>
+        <h1 className="page-title">Meus Chamados</h1>
+        <p className="page-description">Acompanhe e gerencie seus chamados abertos</p>
       </div>
 
       {/* Dados da Empresa */}
       <Card>
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-              <Building2 className="size-5 text-[#3ba5d8]" />
+            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+              <Building2 className="size-5 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">Empresa</p>
-                <p className="font-medium text-[#1a3a5c]">
+                <p className="font-medium text-primary">
                   {userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "Não disponível"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-              <User className="size-5 text-[#3ba5d8]" />
+            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+              <User className="size-5 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">Usuário</p>
-                <p className="font-medium text-[#1a3a5c]">
+                <p className="font-medium text-primary">
                   {userData?.nome || "Não disponível"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-              <Mail className="size-5 text-[#3ba5d8]" />
+            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+              <Mail className="size-5 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">E-mail</p>
-                <p className="font-medium text-[#1a3a5c]">
+                <p className="font-medium text-primary">
                   {userData?.email || "Não disponível"}
                 </p>
               </div>
@@ -224,7 +224,7 @@ export function MeusChamadosPage() {
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Filter className="size-5" />
             Filtros de Pesquisa
           </CardTitle>
@@ -232,7 +232,7 @@ export function MeusChamadosPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label>Buscar</Label>
+              <Label className="text-sm font-medium">Buscar</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input 
@@ -244,7 +244,7 @@ export function MeusChamadosPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-sm font-medium">Status</Label>
               <Select value={filtroStatus} onValueChange={setFiltroStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -260,7 +260,7 @@ export function MeusChamadosPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Prioridade</Label>
+              <Label className="text-sm font-medium">Prioridade</Label>
               <Select value={filtroPrioridade} onValueChange={setFiltroPrioridade}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
@@ -274,7 +274,7 @@ export function MeusChamadosPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label className="text-sm font-medium">Tipo</Label>
               <Select value={filtroTipo} onValueChange={setFiltroTipo}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -288,7 +288,7 @@ export function MeusChamadosPage() {
             </div>
             <div className="space-y-2">
               <Label>&nbsp;</Label>
-              <Button className="w-full bg-[#3ba5d8] hover:bg-[#2d8bc0]">
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Filter className="size-4 mr-2" />
                 Filtrar
               </Button>
@@ -299,22 +299,18 @@ export function MeusChamadosPage() {
 
       {/* Lista de Chamados */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c]">Lista de Chamados</CardTitle>
-          <CardDescription>{chamadosFiltrados.length} chamados encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">Nº</TableHead>
-                  <TableHead>Título</TableHead>
-                  <TableHead className="w-[100px]">Tipo</TableHead>
-                  <TableHead className="w-[100px]">Prioridade</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[140px]">Data Abertura</TableHead>
-                  <TableHead className="w-[180px] text-right">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[100px] text-primary font-semibold">Nº</TableHead>
+                  <TableHead className="text-primary font-semibold">Título</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Tipo</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Prioridade</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Status</TableHead>
+                  <TableHead className="w-[140px] text-primary font-semibold">Data Abertura</TableHead>
+                  <TableHead className="w-[180px] text-right text-primary font-semibold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -326,7 +322,7 @@ export function MeusChamadosPage() {
                   </TableRow>
                 ) : chamadosFiltrados.length > 0 ? (
                   chamadosFiltrados.map((chamado) => (
-                    <TableRow key={chamado.id}>
+                    <TableRow key={chamado.id} className="data-table-row">
                       <TableCell className="font-mono font-medium">CH-{chamado.id.toString().padStart(3, '0')}</TableCell>
                       <TableCell className="font-medium">{chamado.titulo}</TableCell>
                       <TableCell>

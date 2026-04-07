@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, RotateCcw, Eye, UserPlus, RefreshCw, CheckCircle, Lock, MoreHorizontal, Clock, AlertTriangle, Loader2, Shuffle, ArrowRight, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { formatDate } from "@/lib/utils"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -243,14 +244,14 @@ export function ChamadosPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Chamados Escalonados</h1>
-        <p className="text-muted-foreground">Pool de chamados escalonados disponíveis para seu nível</p>
+        <h1 className="page-title">Chamados Escalonados</h1>
+        <p className="page-description">Pool de chamados escalonados disponíveis para seu nível</p>
       </div>
 
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Filtros</CardTitle>
+          <CardTitle className="section-title">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -329,23 +330,31 @@ export function ChamadosPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]/5">
-                  <TableHead className="font-semibold text-[#1a3a5c] w-[100px] text-center">Nº Chamado</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Solicitante</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Equipamento</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Prioridade</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Status</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">SLA</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[100px] text-center text-primary font-semibold">Nº Chamado</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Solicitante</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Equipamento</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Prioridade</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Status</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">SLA</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Data</TableHead>
+                  <TableHead className="text-center text-primary font-semibold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {chamadosFiltrados.map((chamado) => (
-                  <TableRow key={chamado.id} className="hover:bg-[#3ba5d8]/5">
+                  <TableRow key={chamado.id} className="data-table-row">
                     <TableCell className="font-medium text-[#1a3a5c] text-center">CH-{chamado.id}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col items-center">
-                        <span className="text-sm font-medium">{chamado.nome_solicitante || chamado.solicitante_nome}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium">{chamado.nome_solicitante || chamado.solicitante_nome}</span>
+                          {chamado.solicitante_nivel && (
+                            <Badge variant="outline" className="h-3 px-1 text-[8px] border-[#3ba5d8]/30 text-[#3ba5d8] font-semibold uppercase">
+                              {chamado.solicitante_nivel}
+                            </Badge>
+                          )}
+                        </div>
                         {chamado.email_solicitante && <span className="text-[10px] text-muted-foreground">{chamado.email_solicitante}</span>}
                       </div>
                     </TableCell>
@@ -371,13 +380,7 @@ export function ChamadosPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-center">
-                      {new Date(chamado.data_abertura).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatDate(chamado.data_abertura)}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
@@ -483,13 +486,7 @@ export function ChamadosPage() {
               <div className="flex flex-col gap-1">
                 <Label className="text-muted-foreground text-xs">Data de Abertura</Label>
                 <p className="font-medium">
-                  {new Date(chamadoSelecionado.data_abertura).toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatDate(chamadoSelecionado.data_abertura)}
                 </p>
               </div>
               <div className="col-span-2 flex flex-col gap-1">

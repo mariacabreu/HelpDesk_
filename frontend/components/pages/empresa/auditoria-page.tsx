@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
-  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw
+  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw
 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -195,7 +195,7 @@ export function AuditoriaPage() {
 
     doc.text("Relatório de Auditoria - HelpDesk", 14, 15)
     doc.setFontSize(10)
-    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22)
+    doc.text(`Gerado em: ${formatDate(new Date())}`, 14, 22)
     doc.text(`Total de registros: ${registrosFiltrados.length}`, 14, 28)
 
     autoTable(doc, {
@@ -210,33 +210,33 @@ export function AuditoriaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Auditoria</h1>
-          <p className="text-muted-foreground">Rastreie todas as alterações realizadas no sistema</p>
+          <h1 className="page-title">Auditoria</h1>
+          <p className="page-description">Rastreie todas as alterações realizadas no sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={atualizarAuditoria} disabled={loading}>
-            <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" className="gap-2" onClick={atualizarAuditoria} disabled={loading}>
+            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button variant="outline" onClick={exportarPDF} disabled={loading || registrosFiltrados.length === 0}>
-            <Download className="size-4 mr-2" />
-            Exportar Relatório
+          <Button variant="outline" className="gap-2" onClick={exportarPDF} disabled={loading || registrosFiltrados.length === 0}>
+            <Download className="size-4" />
+            Exportar PDF
           </Button>
         </div>
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Shield className="size-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Shield className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{auditoria.length}</p>
+                <p className="text-2xl font-bold text-primary">{auditoria.length}</p>
                 <p className="text-xs text-muted-foreground">Total de Registros</p>
               </div>
             </div>
@@ -245,11 +245,11 @@ export function AuditoriaPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                 <FileText className="size-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {auditoria.filter(r => r.acao === "Criar").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Criações</p>
@@ -260,11 +260,11 @@ export function AuditoriaPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
                 <Settings className="size-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {auditoria.filter(r => r.acao === "Atualizar").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Atualizações</p>
@@ -275,11 +275,11 @@ export function AuditoriaPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                 <User className="size-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{usuarios.length}</p>
+                <p className="text-2xl font-bold text-primary">{usuarios.length}</p>
                 <p className="text-xs text-muted-foreground">Usuários Ativos</p>
               </div>
             </div>
@@ -290,7 +290,7 @@ export function AuditoriaPage() {
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Filter className="size-5" />
             Filtros de Pesquisa
           </CardTitle>
@@ -298,7 +298,7 @@ export function AuditoriaPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label>Buscar</Label>
+              <Label className="text-sm font-medium">Buscar</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input 
@@ -310,7 +310,7 @@ export function AuditoriaPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Módulo</Label>
+              <Label className="text-sm font-medium">Módulo</Label>
               <Select value={filtroModulo} onValueChange={setFiltroModulo}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -326,7 +326,7 @@ export function AuditoriaPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ação</Label>
+              <Label className="text-sm font-medium">Ação</Label>
               <Select value={filtroAcao} onValueChange={setFiltroAcao}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
@@ -341,7 +341,7 @@ export function AuditoriaPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Usuário</Label>
+              <Label className="text-sm font-medium">Usuário</Label>
               <Select value={filtroUsuario} onValueChange={setFiltroUsuario}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -354,11 +354,19 @@ export function AuditoriaPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <Button className="w-full bg-[#3ba5d8] hover:bg-[#2d8bc0]">
-                <Filter className="size-4 mr-2" />
-                Filtrar
+            <div className="flex items-end gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => {
+                  setBusca("")
+                  setFiltroModulo("")
+                  setFiltroAcao("")
+                  setFiltroUsuario("")
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Limpar
               </Button>
             </div>
           </div>
@@ -367,37 +375,30 @@ export function AuditoriaPage() {
 
       {/* Lista de Registros */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
-            <Shield className="size-5" />
-            Registros de Auditoria
-          </CardTitle>
-          <CardDescription>{registrosFiltrados.length} registros encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[160px]">Data/Hora</TableHead>
-                  <TableHead className="w-[120px]">Usuário</TableHead>
-                  <TableHead className="w-[120px]">Módulo</TableHead>
-                  <TableHead className="w-[100px]">Ação</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="w-[100px]">IP</TableHead>
-                  <TableHead className="w-[80px] text-right">Detalhes</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[160px] text-primary font-semibold">Data/Hora</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Usuário</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Módulo</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Ação</TableHead>
+                  <TableHead className="text-primary font-semibold">Descrição</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">IP</TableHead>
+                  <TableHead className="w-[80px] text-right text-primary font-semibold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {registrosFiltrados.map((registro) => {
                   const ModuloIcon = moduloIcons[registro.modulo as keyof typeof moduloIcons] || FileText
                   return (
-                    <TableRow key={registro.id}>
+                    <TableRow key={registro.id} className="data-table-row">
                       <TableCell className="font-mono text-xs">{formatDate(registro.timestamp)}</TableCell>
-                      <TableCell>{registro.usuario}</TableCell>
+                      <TableCell className="font-medium">{registro.usuario}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <ModuloIcon className="size-4 text-[#3ba5d8]" />
+                          <ModuloIcon className="size-4 text-primary" />
                           {registro.modulo}
                         </div>
                       </TableCell>
@@ -412,13 +413,13 @@ export function AuditoriaPage() {
                         <Button 
                           variant="outline" 
                           size="icon"
-                          className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                          className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
                           onClick={() => {
                             setRegistroSelecionado(registro)
                             setModalDetalhes(true)
                           }}
                         >
-                          <Eye className="size-4 text-[#3ba5d8]" />
+                          <Eye className="size-4 text-primary" />
                         </Button>
                       </TableCell>
                     </TableRow>

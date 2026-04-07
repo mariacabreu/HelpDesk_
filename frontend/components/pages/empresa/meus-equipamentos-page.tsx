@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server } from "lucide-react"
+import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 
@@ -232,17 +232,24 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Meus Equipamentos</h1>
-          <p className="text-muted-foreground">Gerencie os equipamentos da sua empresa</p>
+          <h1 className="page-title">Meus Equipamentos</h1>
+          <p className="page-description">Gerencie os equipamentos da sua empresa</p>
         </div>
+        <Button 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          onClick={() => setModalCadastro(true)}
+        >
+          <Plus className="size-4" />
+          Novo Equipamento
+        </Button>
       </div>
 
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Filter className="size-5" />
             Filtros de Pesquisa
           </CardTitle>
@@ -250,7 +257,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Buscar equipamento</Label>
+              <Label className="text-sm font-medium">Buscar equipamento</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input 
@@ -262,7 +269,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label className="text-sm font-medium">Tipo</Label>
               <Select value={filtroTipo} onValueChange={(v) => setFiltroTipo(v === "todos" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -278,7 +285,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-sm font-medium">Status</Label>
               <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v === "todos" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -291,11 +298,18 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <Button className="w-full bg-[#3ba5d8] hover:bg-[#2d8bc0]">
-                <Filter className="size-4 mr-2" />
-                Filtrar
+            <div className="flex items-end gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => {
+                  setBusca("")
+                  setFiltroTipo("")
+                  setFiltroStatus("")
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Limpar
               </Button>
             </div>
           </div>
@@ -304,29 +318,25 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
 
       {/* Lista de Equipamentos */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c]">Lista de Equipamentos</CardTitle>
-          <CardDescription>{equipamentosFiltrados.length} equipamentos encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">ID</TableHead>
-                  <TableHead>Equipamento</TableHead>
-                  <TableHead className="w-[100px]">Tipo</TableHead>
-                  <TableHead className="w-[130px]">Patrimônio</TableHead>
-                  <TableHead className="w-[150px]">Modelo</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="w-[80px]">Chamados</TableHead>
-                  <TableHead className="w-[180px] text-right">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[80px] text-primary font-semibold border-border">ID</TableHead>
+                  <TableHead className="text-primary font-semibold border-border">Equipamento</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold border-border">Tipo</TableHead>
+                  <TableHead className="w-[130px] text-primary font-semibold border-border">Patrimônio</TableHead>
+                  <TableHead className="w-[150px] text-primary font-semibold border-border">Modelo</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold border-border">Status</TableHead>
+                  <TableHead className="w-[80px] text-primary font-semibold border-border">Chamados</TableHead>
+                  <TableHead className="w-[180px] text-right text-primary font-semibold border-border">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground border-border">
                       Carregando equipamentos...
                     </TableCell>
                   </TableRow>
@@ -335,60 +345,60 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                     const Icon = tipoIcon[String(eq.tipo || "").toLowerCase() as keyof typeof tipoIcon] || Monitor
                     const config = statusConfig[String(eq.status || "").toLowerCase() as keyof typeof statusConfig]
                     return (
-                      <TableRow key={eq.id}>
-                        <TableCell className="font-mono text-sm">{eq.id}</TableCell>
-                        <TableCell>
+                      <TableRow key={eq.id} className="data-table-row">
+                        <TableCell className="font-mono text-sm border-border">{eq.id}</TableCell>
+                        <TableCell className="border-border">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gray-100 rounded-lg">
-                              <Icon className="size-4 text-[#1a3a5c]" />
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                              <Icon className="size-4 text-primary" />
                             </div>
-                            <span className="font-medium">{eq.nome}</span>
+                            <span className="font-medium text-foreground">{eq.nome}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize">{eq.tipo}</TableCell>
-                        <TableCell className="font-mono text-xs">{eq.patrimonio}</TableCell>
-                        <TableCell>{eq.modelo}</TableCell>
-                        <TableCell>
+                        <TableCell className="capitalize border-border">{eq.tipo}</TableCell>
+                        <TableCell className="font-mono text-xs border-border">{eq.patrimonio}</TableCell>
+                        <TableCell className="border-border">{eq.modelo}</TableCell>
+                        <TableCell className="border-border">
                           <Badge className={config?.cor || "bg-gray-100 text-gray-800"}>
                             {config?.label || eq.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center border-border">
                           {eq.chamados_count || eq.chamados || 0}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right border-border">
                           <div className="flex justify-end gap-2">
                             <Button 
                               variant="outline" 
                               size="icon" 
-                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
                               title="Visualizar" 
                               onClick={() => abrirDetalhes(eq)}
                             >
-                              <Eye className="size-4 text-[#3ba5d8]" />
+                              <Eye className="size-4 text-primary" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="icon" 
-                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-green-50 hover:border-[#7ac142]/50 transition-all hover:scale-110"
+                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-green-50 hover:border-green-500/50 transition-all hover:scale-110"
                               title="Abrir Chamado"
                               onClick={() => handleOpenTicket(eq.id)}
                             >
-                              <ClipboardList className="size-4 text-[#7ac142]" />
+                              <ClipboardList className="size-4 text-green-600" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="icon" 
-                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#1a3a5c]/30 transition-all hover:scale-110"
+                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/30 transition-all hover:scale-110"
                               title="Editar"
                               onClick={() => handleEditar(eq)}
                             >
-                              <Pencil className="size-4 text-[#1a3a5c]" />
+                              <Pencil className="size-4 text-primary" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="icon" 
-                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
+                              className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-red-50 hover:border-red-300 transition-all hover:scale-110"
                               title="Excluir"
                               onClick={() => handleExcluir(eq.id)}
                             >
@@ -401,7 +411,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground border-border">
                       Nenhum equipamento encontrado.
                     </TableCell>
                   </TableRow>

@@ -115,24 +115,24 @@ export function BackupPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Backup</h1>
-          <p className="text-muted-foreground">Gerencie os backups do sistema</p>
+          <h1 className="page-title">Backup</h1>
+          <p className="page-description">Gerencie os backups do sistema</p>
         </div>
         <Button 
-          className="bg-[#7ac142] hover:bg-[#6ab035]" 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2" 
           onClick={iniciarBackup}
           disabled={executandoBackup}
         >
           {executandoBackup ? (
             <>
-              <RefreshCw className="size-4 mr-2 animate-spin" />
+              <RefreshCw className="size-4 animate-spin" />
               Executando...
             </>
           ) : (
             <>
-              <Database className="size-4 mr-2" />
+              <Database className="size-4" />
               Backup Manual
             </>
           )}
@@ -141,13 +141,13 @@ export function BackupPage() {
 
       {/* Progresso do Backup */}
       {executandoBackup && (
-        <Card className="border-[#3ba5d8]">
+        <Card className="border-primary">
           <CardContent className="pt-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <RefreshCw className="size-5 text-[#3ba5d8] animate-spin" />
-                  <span className="font-medium text-[#1a3a5c]">Executando backup...</span>
+                  <RefreshCw className="size-5 text-primary animate-spin" />
+                  <span className="font-medium text-primary">Executando backup...</span>
                 </div>
                 <span className="text-sm text-muted-foreground">{progressoBackup}%</span>
               </div>
@@ -158,15 +158,15 @@ export function BackupPage() {
       )}
 
       {/* Cards de Status */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                 <CheckCircle className="size-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{totalBackups}</p>
+                <p className="text-2xl font-bold text-primary">{totalBackups}</p>
                 <p className="text-xs text-muted-foreground">Backups Realizados</p>
               </div>
             </div>
@@ -175,11 +175,11 @@ export function BackupPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Calendar className="size-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Calendar className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#1a3a5c]">{formatDateShort(ultimoBackup?.data)}</p>
+                <p className="text-sm font-bold text-primary">{formatDateShort(ultimoBackup?.data)}</p>
                 <p className="text-xs text-muted-foreground">Último Backup</p>
               </div>
             </div>
@@ -188,11 +188,11 @@ export function BackupPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                 <HardDrive className="size-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{ultimoBackup?.tamanho}</p>
+                <p className="text-2xl font-bold text-primary">{ultimoBackup?.tamanho}</p>
                 <p className="text-xs text-muted-foreground">Tamanho do Backup</p>
               </div>
             </div>
@@ -201,11 +201,11 @@ export function BackupPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
                 <Clock className="size-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{horarioBackup}</p>
+                <p className="text-2xl font-bold text-primary">{horarioBackup}</p>
                 <p className="text-xs text-muted-foreground">Horário Programado</p>
               </div>
             </div>
@@ -216,7 +216,7 @@ export function BackupPage() {
       {/* Configurações */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Settings className="size-5" />
             Configurações de Backup
           </CardTitle>
@@ -224,7 +224,7 @@ export function BackupPage() {
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base">Backup Automático</Label>
+              <Label className="text-base font-semibold">Backup Automático</Label>
               <p className="text-sm text-muted-foreground">
                 Realizar backup diário automaticamente
               </p>
@@ -237,7 +237,7 @@ export function BackupPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Horário do Backup Automático</Label>
+              <Label className="text-sm font-medium">Horário do Backup Automático</Label>
               <Select value={horarioBackup} onValueChange={setHorarioBackup}>
                 <SelectTrigger>
                   <SelectValue />
@@ -253,7 +253,7 @@ export function BackupPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Retenção (dias)</Label>
+              <Label className="text-sm font-medium">Retenção (dias)</Label>
               <Select value={retencao} onValueChange={setRetencao}>
                 <SelectTrigger>
                   <SelectValue />
@@ -269,7 +269,7 @@ export function BackupPage() {
             </div>
           </div>
           
-          <Button className="bg-[#3ba5d8] hover:bg-[#2d8bc0]" onClick={salvarConfiguracoes}>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={salvarConfiguracoes}>
             Salvar Configurações
           </Button>
         </CardContent>
@@ -278,24 +278,24 @@ export function BackupPage() {
       {/* Histórico de Backups */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Database className="size-5" />
             Histórico de Backups
           </CardTitle>
           <CardDescription>Últimos backups realizados</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">ID</TableHead>
-                  <TableHead className="w-[180px]">Data/Hora</TableHead>
-                  <TableHead className="w-[100px]">Tipo</TableHead>
-                  <TableHead className="w-[100px]">Tamanho</TableHead>
-                  <TableHead className="w-[100px]">Duração</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[150px] text-right">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[100px] text-primary font-semibold">ID</TableHead>
+                  <TableHead className="w-[180px] text-primary font-semibold">Data/Hora</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Tipo</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Tamanho</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Duração</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Status</TableHead>
+                  <TableHead className="w-[150px] text-right text-primary font-semibold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,8 +310,8 @@ export function BackupPage() {
                     const config = statusConfig[backup.status as keyof typeof statusConfig]
                     const IconStatus = config.icon
                     return (
-                      <TableRow key={backup.id}>
-                        <TableCell className="font-mono text-sm">{backup.id}</TableCell>
+                      <TableRow key={backup.id} className="data-table-row">
+                        <TableCell className="font-mono text-sm font-medium text-primary">{backup.id}</TableCell>
                         <TableCell className="font-mono text-sm">{formatDate(backup.data)}</TableCell>
                         <TableCell className="capitalize">{backup.tipo}</TableCell>
                         <TableCell>{backup.tamanho}</TableCell>
@@ -323,14 +323,24 @@ export function BackupPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-3">
+                          <div className="flex justify-end gap-2">
                             {backup.status === "concluido" && (
                               <>
-                                <Button variant="ghost" size="icon" title="Download">
-                                  <Download className="size-4 text-[#3ba5d8]" />
+                                <Button 
+                                  variant="outline" 
+                                  size="icon" 
+                                  title="Download"
+                                  className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all hover:scale-110"
+                                >
+                                  <Download className="size-4 text-primary" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Restaurar">
-                                  <Upload className="size-4 text-[#7ac142]" />
+                                <Button 
+                                  variant="outline" 
+                                  size="icon" 
+                                  title="Restaurar"
+                                  className="size-8 bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-green-50 hover:border-green-500/50 transition-all hover:scale-110"
+                                >
+                                  <Upload className="size-4 text-green-600" />
                                 </Button>
                               </>
                             )}

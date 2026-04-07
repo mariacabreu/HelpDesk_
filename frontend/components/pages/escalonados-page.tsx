@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, RotateCcw, Eye, Clock, Loader2, RefreshCw, CheckCircle, Lock, MoreHorizontal, Shuffle, ArrowRight, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { formatDate } from "@/lib/utils"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -201,19 +202,19 @@ export function EscalonadosPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Meus Atendimentos</h1>
-        <p className="text-muted-foreground">Chamados que estão sob sua responsabilidade</p>
+        <h1 className="page-title">Meus Atendimentos</h1>
+        <p className="page-description">Chamados que estão sob sua responsabilidade</p>
       </div>
 
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Filtros</CardTitle>
+          <CardTitle className="section-title">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="periodo">Período</Label>
+              <Label htmlFor="periodo" className="text-sm font-medium">Período</Label>
               <Input
                 id="periodo"
                 type="date"
@@ -223,7 +224,7 @@ export function EscalonadosPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>Prioridade</Label>
+              <Label className="text-sm font-medium">Prioridade</Label>
               <Select value={filtros.prioridade} onValueChange={(value) => setFiltros({ ...filtros, prioridade: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
@@ -238,7 +239,7 @@ export function EscalonadosPage() {
             </div>
 
             <div className="flex items-end gap-2">
-              <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2" onClick={fetchEscalonados}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2" onClick={fetchEscalonados}>
                 <Search className="size-4" />
                 Filtrar
               </Button>
@@ -256,51 +257,52 @@ export function EscalonadosPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center p-12">
-              <Loader2 className="size-8 animate-spin text-[#3ba5d8]" />
+              <Loader2 className="size-8 animate-spin text-primary" />
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]/5">
-                  <TableHead className="font-semibold text-[#1a3a5c] w-[100px] text-center">ID</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Solicitante</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Chamado</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Prioridade</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Status</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Data</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-center">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="text-primary font-semibold w-[100px] text-center border-border">ID</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Solicitante</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Chamado</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Prioridade</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Status</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Data</TableHead>
+                  <TableHead className="text-primary font-semibold text-center border-border">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {chamadosFiltrados.length > 0 ? (
                   chamadosFiltrados.map((c) => (
-                    <TableRow key={c.id} className="hover:bg-[#3ba5d8]/5">
-                      <TableCell className="font-medium text-[#1a3a5c] text-center">CH-{c.id}</TableCell>
-                      <TableCell className="text-center">
+                    <TableRow key={c.id} className="data-table-row">
+                      <TableCell className="font-medium text-primary text-center border-border">CH-{c.id}</TableCell>
+                      <TableCell className="text-center border-border">
                         <div className="flex flex-col items-center">
-                          <span className="text-sm font-medium">{c.nome_solicitante || c.solicitante_nome || "N/A"}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium">{c.nome_solicitante || c.solicitante_nome || "N/A"}</span>
+                            {c.solicitante_nivel && (
+                              <Badge variant="outline" className="h-4 px-1 text-[10px] border-primary/30 text-primary font-semibold uppercase">
+                                {c.solicitante_nivel}
+                              </Badge>
+                            )}
+                          </div>
                           {c.email_solicitante && <span className="text-[10px] text-muted-foreground">{c.email_solicitante}</span>}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium text-center">{c.titulo}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="font-medium text-center border-border">{c.titulo}</TableCell>
+                      <TableCell className="text-center border-border">
                         <Badge variant="outline" className={`${prioridadeColors[c.prioridade] || ""} mx-auto`}>
                           {c.prioridade ? (c.prioridade.charAt(0).toUpperCase() + c.prioridade.slice(1)) : "N/A"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center border-border">
                         <Badge variant="outline" className={`${statusColors[c.status] || ""} mx-auto`}>
                           {statusLabels[c.status] || c.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-center">
-                        {new Date(c.data_abertura).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <TableCell className="text-sm text-center border-border">
+                        {formatDate(c.data_abertura)}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
@@ -390,13 +392,7 @@ export function EscalonadosPage() {
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Data de Abertura</Label>
                 <p className="font-medium">
-                  {new Date(detalhesAberto.data_abertura).toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatDate(detalhesAberto.data_abertura)}
                 </p>
               </div>
               <div className="space-y-1">

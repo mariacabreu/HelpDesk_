@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDate } from "@/lib/utils"
-import { Search, Filter, FileText, Download, AlertCircle, CheckCircle, Info, AlertTriangle } from "lucide-react"
+import { Search, Filter, FileText, Download, AlertCircle, CheckCircle, Info, AlertTriangle, RotateCcw } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
@@ -28,33 +28,43 @@ export function LogsPage() {
   const [filtroTipo, setFiltroTipo] = useState("")
   const [filtroModulo, setFiltroModulo] = useState("")
 
+  const fetchLogs = async (empresaId: string) => {
+    try {
+      const response = await fetch(`/api/logs?empresa_id=${empresaId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setLogs(data)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar logs:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
       const user = JSON.parse(storedUser)
       setUserData(user)
-      
-      // Simulação de busca de logs do backend
-      const mockLogs = [
-        { id: 1, timestamp: "2024-04-04T10:15:30Z", tipo: "info", modulo: "Autenticação", usuario: user.nome || "Maria Souza", acao: "Login realizado com sucesso", ip: "192.168.1.15" },
-        { id: 2, timestamp: "2024-04-04T11:20:45Z", tipo: "success", modulo: "Chamados", usuario: user.nome || "Maria Souza", acao: "Novo chamado CH-005 criado", ip: "192.168.1.15" },
-        { id: 3, timestamp: "2024-04-04T12:05:10Z", tipo: "warning", modulo: "Backup", usuario: "Sistema", acao: "Falha na sincronização do backup automático", ip: "127.0.0.1" },
-        { id: 4, timestamp: "2024-04-04T14:30:00Z", tipo: "info", modulo: "Equipamentos", usuario: user.nome || "Maria Souza", acao: "Consulta ao inventário de equipamentos", ip: "192.168.1.15" },
-        { id: 5, timestamp: "2024-04-04T15:45:20Z", tipo: "error", modulo: "Segurança", usuario: "Desconhecido", acao: "Tentativa de acesso não autorizado à API", ip: "45.12.89.201" },
-        { id: 6, timestamp: "2024-04-03T09:00:00Z", tipo: "info", modulo: "Funcionários", usuario: user.nome || "Maria Souza", acao: "Alteração de permissão para João Silva", ip: "192.168.1.15" },
-        { id: 7, timestamp: "2024-04-03T10:30:15Z", tipo: "success", modulo: "Backup", usuario: "Sistema", acao: "Backup automático realizado com sucesso", ip: "127.0.0.1" },
-        { id: 8, timestamp: "2024-04-03T14:15:00Z", tipo: "info", modulo: "Chamados", usuario: "João Silva", acao: "Comentário adicionado ao chamado CH-001", ip: "192.168.1.16" },
-      ]
-      setLogs(mockLogs)
-      setLoading(false)
+      if (user.empresa?.id) {
+        fetchLogs(user.empresa.id)
+      } else {
+        setLoading(false)
+      }
     }
   }, [])
 
   const logsFiltrados = logs.filter(log => {
-    if (filtroTipo && log.tipo !== filtroTipo) return false
-    if (filtroModulo && log.modulo !== filtroModulo) return false
-    if (busca && !log.acao.toLowerCase().includes(busca.toLowerCase()) && 
-        !log.usuario.toLowerCase().includes(busca.toLowerCase())) return false
+    if (filtroTipo && filtroTipo !== "todos" && log.tipo !== filtroTipo) return false
+    if (filtroModulo && filtroModulo !== "todos" && log.modulo !== filtroModulo) return false
+    
+    const termoBusca = busca.toLowerCase()
+    if (busca && 
+        !log.acao.toLowerCase().includes(termoBusca) && 
+        !(log.usuario_nome || "").toLowerCase().includes(termoBusca)) {
+      return false
+    }
     return true
   })
 
@@ -68,14 +78,14 @@ export function LogsPage() {
     // Data de exportação
     doc.setFontSize(11)
     doc.setTextColor(100)
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30)
+    doc.text(`Gerado em: ${formatDate(new Date())}`, 14, 30)
     
     // Tabela
     const tableData = logsFiltrados.map(log => [
       formatDate(log.timestamp),
       log.tipo.toUpperCase(),
       log.modulo,
-      log.usuario,
+      log.usuario_nome || "Sistema",
       log.acao,
       log.ip
     ])
@@ -94,27 +104,31 @@ export function LogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Logs do Sistema</h1>
-          <p className="text-muted-foreground">Monitore todas as atividades do sistema</p>
+          <h1 className="page-title">Logs do Sistema</h1>
+          <p className="page-description">Monitore todas as atividades do sistema</p>
         </div>
-        <Button variant="outline" className="bg-white border-gray-200 shadow-sm hover:bg-gray-50 transition-all" onClick={exportarPDF}>
-          <Download className="size-4 mr-2" />
+        <Button 
+          variant="outline" 
+          className="bg-white dark:bg-background border-gray-200 shadow-sm hover:bg-blue-50 hover:border-primary/50 transition-all gap-2" 
+          onClick={exportarPDF}
+        >
+          <Download className="size-4 text-primary" />
           Exportar Logs
         </Button>
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Info className="size-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Info className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {logs.filter(l => l.tipo === "info").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Informativos</p>
@@ -125,11 +139,11 @@ export function LogsPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                 <CheckCircle className="size-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {logs.filter(l => l.tipo === "success").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Sucessos</p>
@@ -140,11 +154,11 @@ export function LogsPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
                 <AlertTriangle className="size-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {logs.filter(l => l.tipo === "warning").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Alertas</p>
@@ -155,11 +169,11 @@ export function LogsPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
                 <AlertCircle className="size-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {logs.filter(l => l.tipo === "error").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Erros</p>
@@ -172,15 +186,15 @@ export function LogsPage() {
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Filter className="size-5" />
-            Filtros
+            Filtros de Pesquisa
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Buscar</Label>
+              <Label className="text-sm font-medium">Buscar</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input 
@@ -192,7 +206,7 @@ export function LogsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label className="text-sm font-medium">Tipo</Label>
               <Select value={filtroTipo} onValueChange={setFiltroTipo}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -207,7 +221,7 @@ export function LogsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Módulo</Label>
+              <Label className="text-sm font-medium">Módulo</Label>
               <Select value={filtroModulo} onValueChange={setFiltroModulo}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -224,11 +238,18 @@ export function LogsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <Button className="w-full bg-[#3ba5d8] hover:bg-[#2d8bc0]">
-                <Filter className="size-4 mr-2" />
-                Filtrar
+            <div className="flex items-end gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => {
+                  setBusca("")
+                  setFiltroTipo("")
+                  setFiltroModulo("")
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Limpar
               </Button>
             </div>
           </div>
@@ -237,24 +258,17 @@ export function LogsPage() {
 
       {/* Lista de Logs */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
-            <FileText className="size-5" />
-            Registros
-          </CardTitle>
-          <CardDescription>{logsFiltrados.length} registros encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[150px]">Timestamp</TableHead>
-                  <TableHead className="w-[80px]">Tipo</TableHead>
-                  <TableHead className="w-[120px]">Módulo</TableHead>
-                  <TableHead className="w-[120px]">Usuário</TableHead>
-                  <TableHead>Ação</TableHead>
-                  <TableHead className="w-[120px]">IP</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="w-[150px] text-primary font-semibold">Timestamp</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Tipo</TableHead>
+                  <TableHead className="w-[140px] text-primary font-semibold">Módulo</TableHead>
+                  <TableHead className="w-[140px] text-primary font-semibold">Usuário</TableHead>
+                  <TableHead className="text-primary font-semibold">Ação</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">IP</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -268,7 +282,7 @@ export function LogsPage() {
                   logsFiltrados.map((log) => {
                     const config = tipoConfig[log.tipo as keyof typeof tipoConfig]
                     return (
-                      <TableRow key={log.id}>
+                      <TableRow key={log.id} className="data-table-row">
                         <TableCell className="font-mono text-xs">{formatDate(log.timestamp)}</TableCell>
                         <TableCell>
                           <Badge className={config.cor}>
@@ -276,8 +290,8 @@ export function LogsPage() {
                             {config.label}
                           </Badge>
                         </TableCell>
-                        <TableCell>{log.modulo}</TableCell>
-                        <TableCell className="text-sm">{log.usuario}</TableCell>
+                        <TableCell className="font-medium">{log.modulo}</TableCell>
+                        <TableCell className="text-sm">{log.usuario_nome || "Sistema"}</TableCell>
                         <TableCell className="text-sm">{log.acao}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{log.ip}</TableCell>
                       </TableRow>

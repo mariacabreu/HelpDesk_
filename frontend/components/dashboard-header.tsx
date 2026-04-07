@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, User, LogOut, Settings, HelpCircle, Mail, Phone, Building, Shield, BellRing, Palette, Globe, Lock } from "lucide-react"
+import { Bell, User, LogOut, Settings, HelpCircle, Mail, Phone, Building, Shield, BellRing, Palette, Globe, Lock, Moon, Sun, RefreshCw } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ interface DashboardHeaderProps {
   userName?: string
   userEmail?: string
   userCargo?: string
+  userNivel?: string
   userRole?: "suporte" | "empresa"
   onRoleChange?: (role: "suporte" | "empresa") => void
 }
@@ -40,9 +42,11 @@ export function DashboardHeader({
   userName = "João Silva",
   userEmail = "joao.silva@empresa.com",
   userCargo = "Suporte N1",
+  userNivel,
   userRole = "suporte",
   onRoleChange,
 }: DashboardHeaderProps) {
+  const { setTheme, theme } = useTheme()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
@@ -87,22 +91,34 @@ export function DashboardHeader({
 
   return (
     <>
-      <header className="flex h-16 items-center justify-between border-b border-[#1a3a5c]/10 bg-white px-4 lg:px-6">
+      <header className="flex h-16 items-center justify-between border-b border-border bg-background px-4 lg:px-6">
         <div className="flex items-center gap-4">
-          <SidebarTrigger className="text-[#1a3a5c] hover:bg-[#3ba5d8]/10" />
-          <h1 className="text-lg font-semibold text-[#1a3a5c] hidden sm:block">
+          <SidebarTrigger className="text-foreground hover:bg-accent" />
+          <h1 className="text-lg font-semibold text-foreground hidden sm:block">
             {userRole === "suporte" ? "Painel de Suporte" : "Portal da Empresa"}
           </h1>
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4">
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-foreground hover:bg-accent"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Alternar tema</span>
+          </Button>
+
           {/* Notificações */}
           <DropdownMenu onOpenChange={(open) => open && handleClearNotifications()}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-[#1a3a5c] hover:bg-[#3ba5d8]/10"
+                className="relative text-foreground hover:bg-accent"
               >
                 <Bell className="size-5" />
                 {notificationCount > 0 && (
@@ -136,17 +152,24 @@ export function DashboardHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 hover:bg-[#3ba5d8]/10 px-2"
+                className="flex items-center gap-2 hover:bg-accent px-2"
               >
                 <Avatar className="size-8">
                   <AvatarImage src="" alt={userName} />
-                  <AvatarFallback className="bg-[#3ba5d8] text-white text-sm">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                     {userName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden lg:flex flex-col items-start">
-                  <span className="text-sm font-medium text-[#1a3a5c]">{userName}</span>
-                  <span className="text-xs text-[#1a3a5c]/60">{userCargo}</span>
+                  <span className="text-sm font-medium text-foreground">{userName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">{userCargo}</span>
+                    {userNivel && (
+                      <Badge variant="outline" className="h-4 px-1 text-[10px] border-primary/30 text-primary font-semibold uppercase">
+                        {userNivel}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -168,6 +191,18 @@ export function DashboardHeader({
                 <HelpCircle className="mr-2 h-4 w-4" />
                 <span>Ajuda</span>
               </DropdownMenuItem>
+              {onRoleChange && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-[#3ba5d8]" 
+                    onClick={() => onRoleChange(userRole === "suporte" ? "empresa" : "suporte")}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    <span>Mudar para Visão {userRole === "suporte" ? "Empresa" : "Suporte"}</span>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -246,7 +281,10 @@ export function DashboardHeader({
                   </div>
                   <p className="text-sm text-muted-foreground">Alternar visual da interface</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={theme === "dark"} 
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")} 
+                />
               </div>
               <div className="flex items-center justify-between p-4 border rounded-xl">
                 <div className="space-y-0.5">

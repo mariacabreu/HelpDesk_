@@ -24,7 +24,7 @@ import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
-import { formatDateShort } from "@/lib/utils"
+import { formatDateShort, formatDate } from "@/lib/utils"
 
 const prioridadeConfig: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
@@ -117,9 +117,19 @@ export function DashboardEmpresaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-[#1a3a5c]">Bem-vindo, {empresa?.nome_fantasia || "Tech Solutions"}</h1>
-        <p className="text-muted-foreground">Visão geral da sua infraestrutura de TI</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold text-[#1a3a5c]">Portal da Empresa</h1>
+          <p className="text-muted-foreground">
+            {empresa?.nome_fantasia || "Tech Solutions Ltda"} - Gestão de Atendimento
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-100">
+          <Calendar className="size-4 text-[#3ba5d8]" />
+          <span className="text-sm font-medium text-[#1a3a5c]">
+            {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -144,77 +154,76 @@ export function DashboardEmpresaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-[#1a3a5c]">Resumo de Chamados</CardTitle>
-            <CardDescription>Seus últimos tickets registrados</CardDescription>
+            <CardTitle className="text-[#1a3a5c]">Chamados Recentes</CardTitle>
+            <CardDescription>Últimas solicitações abertas pela sua empresa</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-4">
-              {loading ? (
-                <p className="text-center py-4 text-muted-foreground">Carregando chamados...</p>
-              ) : recentTickets.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-[#1a3a5c]/5">
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">ID</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamado</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Cliente</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Prioridade</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Data</TableHead>
-                        <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentTickets.map((ticket) => (
-                        <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
-                          <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">
-                            CH-{ticket.id.toString().padStart(3, '0')}
-                          </TableCell>
-                          <TableCell className="font-medium border border-[#1a3a5c]/10">
-                            {ticket.titulo}
-                          </TableCell>
-                          <TableCell className="border border-[#1a3a5c]/10">
-                            {ticket.empresa_nome || empresa?.nome_fantasia || "Tech Solutions"}
-                          </TableCell>
-                          <TableCell className="border border-[#1a3a5c]/10">
-                            <Badge className={prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"}>
-                              {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="border border-[#1a3a5c]/10">
-                            <Badge className={statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"}>
-                              {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-sm border border-[#1a3a5c]/10">
-                            {new Date(ticket.data_abertura).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right border border-[#1a3a5c]/10">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="size-9"
-                            >
-                              <Eye className="size-4 text-[#3ba5d8]" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-center py-8 text-muted-foreground">Nenhum chamado encontrado.</p>
-              )}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#1a3a5c]/5">
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">ID</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamado</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Solicitante</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Prioridade</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Data</TableHead>
+                    <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTickets.map((ticket) => (
+                    <TableRow key={ticket.id} className="hover:bg-[#3ba5d8]/5">
+                      <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">
+                        CH-{ticket.id.toString().padStart(3, '0')}
+                      </TableCell>
+                      <TableCell className="font-medium border border-[#1a3a5c]/10">
+                        {ticket.titulo}
+                      </TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
+                            {ticket.solicitante_nivel && (
+                              <Badge variant="outline" className="h-4 px-1 text-[10px] border-[#3ba5d8]/30 text-[#3ba5d8] font-semibold uppercase">
+                                {ticket.solicitante_nivel}
+                              </Badge>
+                            )}
+                          </div>
+                          {ticket.email_solicitante && <span className="text-[10px] text-muted-foreground">{ticket.email_solicitante}</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <Badge variant="outline" className={prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.cor || "bg-orange-100 text-orange-700 border-orange-200"}>
+                          {prioridadeConfig[String(ticket.prioridade).toLowerCase()]?.label || ticket.prioridade}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <Badge className={statusConfig[String(ticket.status).toLowerCase()]?.cor || "bg-yellow-100 text-yellow-700 border-yellow-200"}>
+                          {statusConfig[String(ticket.status).toLowerCase()]?.label || (ticket.status ? (ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1).replace('_', ' ')) : "Aberto")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm border border-[#1a3a5c]/10">
+                        {formatDate(ticket.data_abertura)}
+                      </TableCell>
+                      <TableCell className="text-right border border-[#1a3a5c]/10">
+                        <Button variant="ghost" size="sm" className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10">
+                          <Eye className="size-4 mr-2" />
+                          Detalhes
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-[#1a3a5c]">Informações da Empresa</CardTitle>
-            <CardDescription>Dados cadastrais ativos</CardDescription>
+            <CardTitle className="text-[#1a3a5c]">Equipamentos</CardTitle>
+            <CardDescription>Resumo de infraestrutura</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border">

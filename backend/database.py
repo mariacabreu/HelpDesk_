@@ -6,21 +6,23 @@ import enum
 Base = declarative_base()
 
 class StatusChamado(enum.Enum):
-    ABERTO = "aberto"
-    EM_ATENDIMENTO = "em_atendimento"
-    AGUARDANDO_TERCEIRO = "aguardando_terceiro"
-    PENDENTE = "pendente"
-    ESCALADO = "escalado"
-    ESCALONAMENTO_APROVADO = "escalonamento_aprovado"
-    RESOLVIDO = "resolvido"
-    FECHADO = "fechado"
-    CANCELADO = "cancelado"
+    aberto = "aberto"
+    em_atendimento = "em_atendimento"
+    aguardando_solicitante = "aguardando_solicitante"
+    aguardando_terceiro = "aguardando_terceiro"
+    pendente = "pendente"
+    escalado = "escalado"
+    escalonamento_aprovado = "escalonamento_aprovado"
+    resolvido = "resolvido"
+    fechado = "fechado"
+    cancelado = "cancelado"
 
 class Prioridade(enum.Enum):
-    BAIXA = "baixa"
-    MEDIA = "media"
-    ALTA = "alta"
-    CRITICA = "critica"
+    baixa = "baixa"
+    media = "media"
+    alta = "alta"
+    urgente = "urgente"
+    critica = "critica"
 
 class Empresa(Base):
     __tablename__ = 'empresas'
@@ -106,8 +108,8 @@ class Chamado(Base):
     titulo = Column(String(200), nullable=False)
     descricao = Column(Text, nullable=False)
     tipo = Column(String(50)) # ex: Incidente, Solicitação, Dúvida
-    prioridade = Column(Enum(Prioridade), default=Prioridade.MEDIA)
-    status = Column(Enum(StatusChamado), default=StatusChamado.ABERTO)
+    prioridade = Column(Enum(Prioridade), default=Prioridade.media)
+    status = Column(Enum(StatusChamado), default=StatusChamado.aberto)
     escalonado_por_nivel = Column(String(20), nullable=True) # n1, n2
     
     data_abertura = Column(DateTime, default=datetime.utcnow)
@@ -144,6 +146,23 @@ class Notificacao(Base):
     
     # Relacionamentos
     usuario = relationship("Funcionario")
+
+class LogSistema(Base):
+    __tablename__ = 'logs_sistema'
+    
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    tipo = Column(String(20), nullable=False) # info, success, warning, error
+    modulo = Column(String(50), nullable=False) # Autenticação, Chamados, etc.
+    usuario_id = Column(Integer, ForeignKey('funcionarios.id'), nullable=True)
+    usuario_nome = Column(String(100), nullable=True)
+    acao = Column(Text, nullable=False)
+    ip = Column(String(45), nullable=True)
+    empresa_id = Column(Integer, ForeignKey('empresas.id'), nullable=True)
+    
+    # Relacionamentos
+    usuario = relationship("Funcionario")
+    empresa = relationship("Empresa")
 
 # Configuração do Banco de Dados
 DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"

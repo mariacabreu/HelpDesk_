@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema
 from datetime import datetime
 import random
 import smtplib
@@ -104,6 +104,23 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": errors},
     )
 
+def registrar_log(db: Session, tipo: str, modulo: str, acao: str, usuario_id: int = None, usuario_nome: str = None, empresa_id: int = None, ip: str = None):
+    try:
+        novo_log = LogSistema(
+            tipo=tipo,
+            modulo=modulo,
+            acao=acao,
+            usuario_id=usuario_id,
+            usuario_nome=usuario_nome,
+            empresa_id=empresa_id,
+            ip=ip
+        )
+        db.add(novo_log)
+        db.commit()
+    except Exception as e:
+        print(f"Erro ao registrar log: {e}")
+        db.rollback()
+
 # Configurar CORS para o frontend (geralmente localhost:3000)
 app.add_middleware(
     CORSMiddleware,
@@ -145,6 +162,7 @@ class ChamadoUpdate(BaseModel):
     status: str | None = None
     atribuido_a_id: int | None = None
     escalonado_por_nivel: str | None = None
+    usuario_acao_id: int | None = None # ID de quem está realizando a ação
 
 class HistoricoCreate(BaseModel):
     usuario_id: int
@@ -273,17 +291,23 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro interno ao criar empresa: {str(e)}")
 
 @app.post("/login")
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
     # Buscar o funcionário pelo login
     user = db.query(Funcionario).filter(Funcionario.login == request.login).first()
     
     if not user or user.senha != request.password:
+        # Log de tentativa de acesso falha
+        registrar_log(db, "error", "Autenticação", f"Tentativa de login falha para o usuário: {request.login}", ip=req.client.host)
         raise HTTPException(status_code=401, detail="Login ou senha incorretos")
+    
+    # Log de login com sucesso
+    registrar_log(db, "info", "Autenticação", "Login realizado com sucesso", usuario_id=user.id, usuario_nome=user.nome, empresa_id=user.empresa_id, ip=req.client.host)
     
     # Determinar o papel do usuário (role) baseado no cargo
     # Exemplo: Se o cargo contém "Suporte" ou "Analista de Sistemas", é Suporte
     role = "suporte"
-    if any(keyword in user.cargo for keyword in ["Desenvolvedora", "Diretor", "Empresa"]):
+    user_cargo = user.cargo or ""
+    if any(keyword in user_cargo for keyword in ["Desenvolvedora", "Diretor", "Empresa"]):
         role = "empresa"
     
     # Buscar informações da empresa do funcionário
@@ -314,15 +338,24 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         } if empresa else None
     }
 
+@app.get("/logs")
+def get_logs(empresa_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(LogSistema)
+    if empresa_id:
+        query = query.filter(LogSistema.empresa_id == empresa_id)
+    
+    logs = query.order_by(LogSistema.timestamp.desc()).all()
+    return logs
+
 @app.post("/chamados")
 def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
     try:
         # Converter string de prioridade para o Enum correspondente
         prioridade_map = {
-            "baixa": Prioridade.BAIXA,
-            "media": Prioridade.MEDIA,
-            "alta": Prioridade.ALTA,
-            "critica": Prioridade.CRITICA
+            "baixa": Prioridade.baixa,
+            "media": Prioridade.media,
+            "alta": Prioridade.alta,
+            "critica": Prioridade.critica
         }
         
         atribuido_id = chamado.atribuido_a_id
@@ -366,11 +399,20 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             descricao=chamado.descricao,
             tipo=chamado.tipo,
             prioridade=Prioridade(chamado.prioridade.lower()),
-            status=StatusChamado.ABERTO if not atribuido_id else StatusChamado.EM_ATENDIMENTO
+            status=StatusChamado.aberto if not atribuido_id else StatusChamado.em_atendimento
         )
         db.add(db_chamado)
         db.flush() # Para gerar o ID do chamado antes das notificações
         
+        # Obter o nome do solicitante para as notificações e logs
+        solicitante_nome = chamado.nome_solicitante
+        if not solicitante_nome:
+            sol_user = db.query(Funcionario).filter(Funcionario.id == db_chamado.solicitante_id).first()
+            if sol_user:
+                solicitante_nome = sol_user.nome
+            else:
+                solicitante_nome = "Usuário Desconhecido"
+
         # Notificar solicitante (confirmação)
         notif_sol = Notificacao(
             usuario_id=db_chamado.solicitante_id,
@@ -387,7 +429,7 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             if g.id != db_chamado.solicitante_id:
                 db.add(Notificacao(
                     usuario_id=g.id,
-                    mensagem=f"Novo chamado CH-{db_chamado.id} aberto por {db_chamado.solicitante.nome}: {chamado.titulo}"
+                    mensagem=f"Novo chamado CH-{db_chamado.id} aberto por {solicitante_nome}: {chamado.titulo}"
                 ))
 
         # Notificar se atribuído
@@ -400,6 +442,10 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             
         db.commit()
         db.refresh(db_chamado)
+        
+        # Log de criação de chamado
+        registrar_log(db, "success", "Chamados", f"Novo chamado CH-{db_chamado.id} criado: {db_chamado.titulo}", usuario_id=db_chamado.solicitante_id, usuario_nome=solicitante_nome, empresa_id=db_chamado.empresa_id)
+        
         return format_chamado(db_chamado)
     except Exception as e:
         db.rollback()
@@ -429,6 +475,10 @@ def create_equipamento(e: EquipamentoCreate, db: Session = Depends(get_db)):
         db.add(novo)
         db.commit()
         db.refresh(novo)
+        
+        # Log de criação de equipamento
+        registrar_log(db, "success", "Equipamentos", f"Novo equipamento cadastrado: {novo.nome} (Patrimônio: {novo.patrimonio})", empresa_id=novo.empresa_id)
+        
         return novo
     except Exception as ex:
         db.rollback()
@@ -488,7 +538,9 @@ def format_chamado(c: Chamado):
         "data_fechamento": c.data_fechamento,
         "empresa_nome": c.empresa.nome_fantasia if c.empresa else None,
         "solicitante_nome": c.solicitante.nome if c.solicitante else None,
+        "solicitante_nivel": c.solicitante.nivel if c.solicitante else None,
         "atribuido_a_nome": c.atribuido_a.nome if c.atribuido_a else None,
+        "atribuido_a_nivel": c.atribuido_a.nivel if c.atribuido_a else None,
         "equipamento_nome": c.equipamento.nome if c.equipamento else None,
         "equipamento_patrimonio": c.equipamento.patrimonio if c.equipamento else None,
         "historico": [
@@ -535,8 +587,8 @@ def get_escalados_disponiveis(nivel: str, db: Session = Depends(get_db)):
             ((Chamado.escalonado_por_nivel == None) & (Chamado.prioridade.in_(["alta", "critica"])))
         ).all()
     else:
-        # N1 vê novos (sem escalonamento prévio)
-        chamados = query.filter(Chamado.escalonado_por_nivel == None).all()
+        # N1 vê apenas o que ele mesmo escalonou
+        chamados = query.filter(Chamado.escalonado_por_nivel == "n1").all()
     
     return [format_chamado(c) for c in chamados]
 
@@ -588,6 +640,9 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
             elif current_nivel == "n2": next_nivel = "n3"
             elif current_nivel == "n3": next_nivel = "n3"
             
+            # Tentar obter o ID do usuário que está escalonando (pode vir no update_data ou ser o atribuído atual)
+            escalador_id = update_data.get("usuario_acao_id") or db_chamado.atribuido_a_id
+
             # Quando escalonamos, resetamos a atribuição para voltar ao pool
             if "atribuido_a_id" not in update_data:
                 db_chamado.atribuido_a_id = None
@@ -609,6 +664,7 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
             
             db.add(HistoricoChamado(
                 chamado_id=chamado_id,
+                usuario_id=escalador_id,
                 acao=f"Chamado escalonado do nível {current_nivel.upper()} para {next_nivel.upper()}"
             ))
             
@@ -626,7 +682,7 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
                 novo_tecnico = db.query(Funcionario).filter(Funcionario.id == value).first()
                 tecnico_nome = novo_tecnico.nome if novo_tecnico else "Pool"
                 acao = f"Chamado atribuído a {tecnico_nome}"
-                if db_chamado.status == StatusChamado.ESCALONAMENTO_APROVADO:
+                if db_chamado.status == StatusChamado.escalonamento_aprovado:
                     acao = f"Escalonamento aceito por {tecnico_nome}"
                 
                 db.add(HistoricoChamado(
@@ -634,22 +690,33 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
                     acao=acao
                 ))
                 
-                    db.add(Notificacao(
-                        usuario_id=value,
-                        mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
-                    ))
-                    
-                    # Notificar o solicitante
-                    db.add(Notificacao(
-                        usuario_id=db_chamado.solicitante_id,
-                        mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
-                    ))
+                db.add(Notificacao(
+                    usuario_id=value,
+                    mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
+                ))
+                
+                # Notificar o solicitante
+                db.add(Notificacao(
+                    usuario_id=db_chamado.solicitante_id,
+                    mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
+                ))
         else:
             setattr(db_chamado, key, value)
     
     try:
         db.commit()
         db.refresh(db_chamado)
+        
+        # Log de atualização de chamado
+        usuario_acao_id = c_update.usuario_acao_id
+        usuario_acao_nome = "Sistema"
+        if usuario_acao_id:
+            user_acao = db.query(Funcionario).filter(Funcionario.id == usuario_acao_id).first()
+            if user_acao:
+                usuario_acao_nome = user_acao.nome
+        
+        registrar_log(db, "info", "Chamados", f"Chamado CH-{db_chamado.id} atualizado", usuario_id=usuario_acao_id, usuario_nome=usuario_acao_nome, empresa_id=db_chamado.empresa_id)
+        
         return format_chamado(db_chamado)
     except Exception as e:
         db.rollback()
@@ -682,6 +749,10 @@ def update_funcionario(funcionario_id: int, f: FuncionarioUpdate, db: Session = 
     try:
         db.commit()
         db.refresh(db_func)
+        
+        # Log de atualização de funcionário
+        registrar_log(db, "info", "Funcionários", f"Dados do funcionário {db_func.nome} atualizados", empresa_id=db_func.empresa_id)
+        
         return db_func
     except Exception as e:
         db.rollback()
@@ -698,9 +769,8 @@ def delete_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
         db.query(Chamado).filter(Chamado.atribuido_a_id == funcionario_id).update({Chamado.atribuido_a_id: None})
         
         # 2. Lidar com chamados onde ele é o solicitante (opcional, mas evita erros se houver restrição)
-        # Se o banco não permitir solicitante_id nulo, talvez devêssemos impedir a exclusão 
-        # ou atribuir a um usuário "Excluído/Anônimo".
-        # Por enquanto, vamos apenas tentar excluir o funcionário, pois o erro relatado foi no atribuido_a_id.
+        # Log de exclusão
+        registrar_log(db, "warning", "Funcionários", f"Funcionário {db_func.nome} excluído do sistema", empresa_id=db_func.empresa_id)
         
         db.delete(db_func)
         db.commit()
@@ -747,6 +817,9 @@ def create_funcionario(f: FuncionarioCreate, db: Session = Depends(get_db)):
             login_gerado
         )
         
+        # 5. Log de criação de funcionário
+        registrar_log(db, "success", "Funcionários", f"Novo funcionário cadastrado: {novo.nome} (Login: {novo.login})", empresa_id=novo.empresa_id)
+        
         return {
             "success": True,
             "funcionario": novo,
@@ -757,16 +830,50 @@ def create_funcionario(f: FuncionarioCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar funcionário: {str(ex)}")
 
 @app.get("/stats/suporte")
-def get_stats_suporte(db: Session = Depends(get_db)):
+def get_stats_suporte(tecnico_id: int | None = None, db: Session = Depends(get_db)):
     from sqlalchemy import func
-    from database import Chamado
+    from database import Chamado, HistoricoChamado
     
+    # Filtro base para estatísticas globais (para os cards de cima)
     total_abertos = db.query(func.count(Chamado.id)).filter(Chamado.status == "aberto").scalar() or 0
     total_em_andamento = db.query(func.count(Chamado.id)).filter(Chamado.status == "em_atendimento").scalar() or 0
-    total_resolvidos = db.query(func.count(Chamado.id)).filter(Chamado.status == "resolvido").scalar() or 0
+    total_resolvidos = db.query(func.count(Chamado.id)).filter(Chamado.status.in_(["resolvido", "fechado"])).scalar() or 0
+    total_chamados = db.query(func.count(Chamado.id)).scalar() or 1
     
-    # Chamados recentes
-    recentes = db.query(Chamado).order_by(Chamado.data_abertura.desc()).limit(5).all()
+    # Cálculo de % Escalonados
+    total_escalados = db.query(func.count(Chamado.id)).filter(Chamado.status == "escalado").scalar() or 0
+    perc_escalados = round((total_escalados / total_chamados) * 100) if total_chamados > 0 else 0
+    
+    # Cálculo de % SLA Cumprido (exemplo: resolvido em menos de 24h)
+    # Para simplificar, vamos considerar que todos os resolvidos cumpriram SLA por enquanto,
+    # ou buscar os que têm data_fechamento - data_abertura < 24h
+    resolvidos_no_sla = 0
+    chamados_concluidos = db.query(Chamado).filter(Chamado.status.in_(["resolvido", "fechado"])).all()
+    for c in chamados_concluidos:
+        if c.data_fechamento and c.data_abertura:
+            diff = c.data_fechamento - c.data_abertura
+            if diff.total_seconds() < 86400: # 24 horas
+                resolvidos_no_sla += 1
+    
+    perc_sla = round((resolvidos_no_sla / total_resolvidos) * 100) if total_resolvidos > 0 else 0
+    
+    # Chamados recentes com filtro de técnico
+    query_recentes = db.query(Chamado)
+    
+    if tecnico_id:
+        # Busca IDs de chamados que o técnico já interagiu (escalonou)
+        ids_escalonados = db.query(HistoricoChamado.chamado_id).filter(
+            HistoricoChamado.usuario_id == tecnico_id,
+            HistoricoChamado.acao.like("%escalonado%")
+        ).all()
+        ids_escalonados = [id[0] for id in ids_escalonados]
+        
+        query_recentes = query_recentes.filter(
+            (Chamado.atribuido_a_id == tecnico_id) |
+            (Chamado.id.in_(ids_escalonados))
+        )
+    
+    recentes = query_recentes.order_by(Chamado.data_abertura.desc()).limit(5).all()
     recentes_list = []
     for c in recentes:
         recentes_list.append({
@@ -785,7 +892,9 @@ def get_stats_suporte(db: Session = Depends(get_db)):
         "abertos": total_abertos,
         "em_andamento": total_em_andamento,
         "resolvidos": total_resolvidos,
-        "recentes": recentes_list
+        "recentes": recentes_list,
+        "perc_escalados": perc_escalados,
+        "perc_sla": perc_sla
     }
 
 @app.get("/stats/empresa/{empresa_id}")
@@ -840,6 +949,15 @@ def cancelar_chamado(chamado_id: int, db: Session = Depends(get_db)):
     )
     db.add(hist)
     
+    # Log de cancelamento de chamado
+    # Log do cancelamento
+    user_nome = "Sistema"
+    user = db.query(Funcionario).filter(Funcionario.id == chamado.solicitante_id).first()
+    if user:
+        user_nome = user.nome
+    
+    registrar_log(db, "warning", "Chamados", f"Chamado CH-{chamado.id} cancelado pelo usuário", usuario_id=chamado.solicitante_id, usuario_nome=user_nome, empresa_id=chamado.empresa_id)
+    
     db.commit()
     db.refresh(chamado)
     return format_chamado(chamado)
@@ -892,7 +1010,23 @@ def add_historico(chamado_id: int, h: HistoricoCreate, db: Session = Depends(get
             
     db.commit()
     db.refresh(novo_h)
-    return novo_h
+    
+    # Log de interação no chamado
+    user_nome = "Sistema"
+    user = db.query(Funcionario).filter(Funcionario.id == h.usuario_id).first()
+    if user: user_nome = user.nome
+    
+    registrar_log(db, "info", "Chamados", f"Nova interação no chamado CH-{chamado.id}: {h.acao[:50]}...", usuario_id=h.usuario_id, usuario_nome=user_nome, empresa_id=chamado.empresa_id)
+    
+    return {
+        "id": novo_h.id,
+        "acao": novo_h.acao,
+        "data": novo_h.data,
+        "usuario": {
+            "id": user.id if user else 0,
+            "nome": user_nome
+        }
+    }
 
 @app.get("/notificacoes/{usuario_id}")
 def get_notificacoes(usuario_id: int, db: Session = Depends(get_db)):

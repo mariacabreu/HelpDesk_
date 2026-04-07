@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { formatDateShort } from "@/lib/utils"
 import { toast } from "sonner"
-import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle } from "lucide-react"
+import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle, RotateCcw } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; cor: string }> = {
   ativo: { label: "Ativo", cor: "bg-green-100 text-green-800 border-green-200" },
@@ -236,27 +236,32 @@ export function GestaoFuncionariosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Gestão de Funcionários</h1>
-          <p className="text-muted-foreground">Gerencie os usuários da sua empresa</p>
+          <h1 className="page-title">Gestão de Funcionários</h1>
+          <p className="page-description">Gerencie os colaboradores e seus níveis de acesso</p>
         </div>
-        <Button className="bg-[#7ac142] hover:bg-[#6ab035]" onClick={() => setModalCadastro(true)}>
-          <UserPlus className="size-4 mr-2" />
+        <Button 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          onClick={() => setModalCadastro(true)}
+        >
+          <UserPlus className="size-4" />
           Novo Funcionário
         </Button>
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <UserPlus className="size-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Building2 className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">{funcionarios.length}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {funcionarios.length}
+                </p>
                 <p className="text-xs text-muted-foreground">Total de Funcionários</p>
               </div>
             </div>
@@ -265,11 +270,11 @@ export function GestaoFuncionariosPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                 <UserPlus className="size-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {funcionarios.filter(f => f.status === "ativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Ativos</p>
@@ -280,11 +285,11 @@ export function GestaoFuncionariosPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                 <Shield className="size-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {funcionarios.filter(f => f.permissao === "admin").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Administradores</p>
@@ -295,11 +300,11 @@ export function GestaoFuncionariosPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
                 <XCircle className="size-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a3a5c]">
+                <p className="text-2xl font-bold text-primary">
                   {funcionarios.filter(f => f.status === "inativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Inativos</p>
@@ -312,7 +317,7 @@ export function GestaoFuncionariosPage() {
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c] flex items-center gap-2">
+          <CardTitle className="section-title flex items-center gap-2">
             <Filter className="size-5" />
             Filtros de Pesquisa
           </CardTitle>
@@ -320,7 +325,7 @@ export function GestaoFuncionariosPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Buscar funcionário</Label>
+              <Label className="text-sm font-medium">Buscar funcionário</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input 
@@ -332,7 +337,7 @@ export function GestaoFuncionariosPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Departamento</Label>
+              <Label className="text-sm font-medium">Departamento</Label>
               <Select value={filtroDepartamento} onValueChange={setFiltroDepartamento}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -350,7 +355,7 @@ export function GestaoFuncionariosPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-sm font-medium">Status</Label>
               <Select value={filtroStatus} onValueChange={setFiltroStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
@@ -362,11 +367,18 @@ export function GestaoFuncionariosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <Button className="w-full bg-[#3ba5d8] hover:bg-[#2d8bc0]">
-                <Filter className="size-4 mr-2" />
-                Filtrar
+            <div className="flex items-end gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => {
+                  setBusca("")
+                  setFiltroDepartamento("")
+                  setFiltroStatus("")
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Limpar
               </Button>
             </div>
           </div>
@@ -375,35 +387,30 @@ export function GestaoFuncionariosPage() {
 
       {/* Lista de Funcionários */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-[#1a3a5c]">Lista de Funcionários</CardTitle>
-          <CardDescription>{funcionariosFiltrados.length} funcionários encontrados</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="border border-[#1a3a5c]/10">Funcionário</TableHead>
-                  <TableHead className="w-[200px] border border-[#1a3a5c]/10">E-mail</TableHead>
-                  <TableHead className="w-[150px] border border-[#1a3a5c]/10">Cargo</TableHead>
-                  <TableHead className="w-[100px] border border-[#1a3a5c]/10">Nível</TableHead>
-                  <TableHead className="w-[120px] border border-[#1a3a5c]/10">Departamento</TableHead>
-                  <TableHead className="w-[120px] border border-[#1a3a5c]/10">Permissão</TableHead>
-                  <TableHead className="w-[100px] border border-[#1a3a5c]/10">Status</TableHead>
-                  <TableHead className="w-[140px] text-right border border-[#1a3a5c]/10">Ações</TableHead>
+                <TableRow className="data-table-header">
+                  <TableHead className="text-primary font-semibold">Funcionário</TableHead>
+                  <TableHead className="w-[200px] text-primary font-semibold">E-mail</TableHead>
+                  <TableHead className="w-[150px] text-primary font-semibold">Cargo</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Departamento</TableHead>
+                  <TableHead className="w-[120px] text-primary font-semibold">Permissão</TableHead>
+                  <TableHead className="w-[100px] text-primary font-semibold">Status</TableHead>
+                  <TableHead className="w-[140px] text-right text-primary font-semibold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground border border-[#1a3a5c]/10">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       Carregando funcionários...
                     </TableCell>
                   </TableRow>
                 ) : funcionariosFiltrados.length > 0 ? (
                   funcionariosFiltrados.map((funcionario) => (
-                    <TableRow key={funcionario.id}>
+                    <TableRow key={funcionario.id} className="data-table-row">
                       <TableCell className="border border-[#1a3a5c]/10">
                         <div className="flex items-center gap-3">
                           <Avatar className="size-8">
@@ -411,16 +418,16 @@ export function GestaoFuncionariosPage() {
                               {getInitials(funcionario.nome)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{funcionario.nome}</span>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[#1a3a5c]">{funcionario.nome}</span>
+                            <span className="text-[10px] text-[#1a3a5c]/60 font-medium uppercase tracking-wider">
+                              Nível: {funcionario.nivel || "N1"}
+                            </span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground border border-[#1a3a5c]/10">{funcionario.email}</TableCell>
                       <TableCell className="border border-[#1a3a5c]/10">{funcionario.cargo}</TableCell>
-                      <TableCell className="border border-[#1a3a5c]/10">
-                        <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                          {funcionario.nivel || "N1"}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="border border-[#1a3a5c]/10">{funcionario.setor}</TableCell>
                       <TableCell className="border border-[#1a3a5c]/10">
                         <Badge className={permissaoConfig[funcionario.permissao as keyof typeof permissaoConfig]?.cor || "bg-blue-100 text-blue-800"}>

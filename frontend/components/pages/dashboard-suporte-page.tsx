@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { formatDate } from "@/lib/utils"
 
 import {
   Table,
@@ -43,9 +44,18 @@ const statusConfig: Record<string, { label: string; cor: string }> = {
 export function DashboardSuportePage() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState<any>(null)
 
   useEffect(() => {
-    fetch("/api/stats/suporte")
+    const storedUser = localStorage.getItem("user")
+    let tecnicoId = ""
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      tecnicoId = user.id
+    }
+
+    fetch(`/api/stats/suporte?tecnico_id=${tecnicoId}`)
       .then(res => res.json())
       .then(data => {
         setStats(data)
@@ -90,14 +100,6 @@ export function DashboardSuportePage() {
       color: "text-[#7ac142]",
       bgColor: "bg-[#7ac142]/10",
     },
-    {
-      title: "SLA Crítico",
-      value: "0",
-      description: "Atenção necessária",
-      icon: AlertTriangle,
-      color: "text-red-500",
-      bgColor: "bg-red-500/10",
-    },
   ]
 
   return (
@@ -107,7 +109,7 @@ export function DashboardSuportePage() {
         <p className="text-muted-foreground">Visão geral operacional da equipe de TI</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-6">
@@ -154,7 +156,14 @@ export function DashboardSuportePage() {
                         </TableCell>
                         <TableCell className="border border-[#1a3a5c]/10 text-center">
                           <div className="flex flex-col items-center">
-                            <span className="text-sm font-medium">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-medium">{ticket.nome_solicitante || ticket.solicitante_nome || "N/A"}</span>
+                              {ticket.solicitante_nivel && (
+                                <Badge variant="outline" className="h-4 px-1 text-[10px] border-[#3ba5d8]/30 text-[#3ba5d8] font-semibold uppercase">
+                                  {ticket.solicitante_nivel}
+                                </Badge>
+                              )}
+                            </div>
                             {ticket.email_solicitante && <span className="text-[10px] text-muted-foreground">{ticket.email_solicitante}</span>}
                           </div>
                         </TableCell>
@@ -172,13 +181,7 @@ export function DashboardSuportePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm border border-[#1a3a5c]/10 text-center">
-                          {new Date(ticket.data_abertura || Date.now()).toLocaleString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {formatDate(ticket.data_abertura)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -197,23 +200,23 @@ export function DashboardSuportePage() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Resolução no N1</span>
-                <span className="font-medium">85%</span>
+                <span className="text-muted-foreground">Casos Escalonados</span>
+                <span className="font-medium">{stats?.perc_escalados || 0}%</span>
               </div>
-              <Progress value={85} className="bg-gray-100" />
+              <Progress value={stats?.perc_escalados || 0} className="bg-gray-100" />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">SLA Cumprido</span>
-                <span className="font-medium">92%</span>
+                <span className="font-medium">{stats?.perc_sla || 0}%</span>
               </div>
-              <Progress value={92} className="bg-gray-100" />
+              <Progress value={stats?.perc_sla || 0} className="bg-gray-100" />
             </div>
             <div className="space-y-2">
                 <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                     <TrendingUp className="size-5 text-blue-600" />
                     <div>
-                        <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total Resolvidos</p>
+                        <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total Concluídos</p>
                         <p className="text-lg font-bold text-[#1a3a5c]">{stats?.resolvidos || 0} Chamados</p>
                     </div>
                 </div>
