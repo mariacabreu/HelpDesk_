@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { formatDateShort } from "@/lib/utils"
+import { formatDateShort, maskCPF, maskPhone } from "@/lib/utils"
 import { toast } from "sonner"
 import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle, RotateCcw } from "lucide-react"
 
@@ -631,7 +631,8 @@ export function GestaoFuncionariosPage() {
                 <Input 
                   id="edit-cpf" 
                   value={editFunc.cpf}
-                  onChange={(e) => setEditFunc({...editFunc, cpf: e.target.value})}
+                  onChange={(e) => setEditFunc({...editFunc, cpf: maskCPF(e.target.value)})}
+                  maxLength={14}
                 />
               </div>
               <div className="space-y-2">
@@ -650,7 +651,8 @@ export function GestaoFuncionariosPage() {
                 <Input 
                   id="edit-telefone" 
                   value={editFunc.telefone}
-                  onChange={(e) => setEditFunc({...editFunc, telefone: e.target.value})}
+                  onChange={(e) => setEditFunc({...editFunc, telefone: maskPhone(e.target.value)})}
+                  maxLength={15}
                 />
               </div>
             </div>
@@ -744,7 +746,8 @@ export function GestaoFuncionariosPage() {
                   id="cpf-func" 
                   placeholder="000.000.000-00" 
                   value={novoFunc.cpf}
-                  onChange={(e) => setNovoFunc({...novoFunc, cpf: e.target.value})}
+                  onChange={(e) => setNovoFunc({...novoFunc, cpf: maskCPF(e.target.value)})}
+                  maxLength={14}
                 />
               </div>
               <div className="space-y-2">
@@ -765,7 +768,8 @@ export function GestaoFuncionariosPage() {
                   id="telefone-func" 
                   placeholder="(11) 99999-9999" 
                   value={novoFunc.telefone}
-                  onChange={(e) => setNovoFunc({...novoFunc, telefone: e.target.value})}
+                  onChange={(e) => setNovoFunc({...novoFunc, telefone: maskPhone(e.target.value)})}
+                  maxLength={15}
                 />
               </div>
             </div>

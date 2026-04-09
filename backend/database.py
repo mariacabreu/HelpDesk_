@@ -164,6 +164,15 @@ class LogSistema(Base):
     usuario = relationship("Funcionario")
     empresa = relationship("Empresa")
 
+class PasswordRecovery(Base):
+    __tablename__ = 'password_recovery'
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String(100), nullable=False)
+    code = Column(String(5), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    used = Column(Integer, default=0) # 0 = não usado, 1 = usado
+
 # Configuração do Banco de Dados
 DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
 engine = create_engine(

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, EyeOff, ArrowLeft, Building2, User, MapPin, Lock, FileText, CheckCircle2 } from "lucide-react"
+import { CheckCircle2, ArrowLeft, Building2, MapPin, Lock, Eye, EyeOff } from "lucide-react"
+import { maskCNPJ, maskPhone } from "@/lib/utils"
 
 interface CompanyFormProps {
   onBack: () => void
@@ -45,32 +46,6 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
     dataVencimento: "",
   })
 
-  const maskCNPJ = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/^(\d{2})(\d)/, "$1.$2")
-      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/\.(\d{3})(\d)/, ".$1/$2")
-      .replace(/(\d{4})(\d)/, "$1-$2")
-      .substring(0, 18)
-  }
-
-  const maskPhone = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2")
-      .substring(0, 14)
-  }
-
-  const maskCelular = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{1})(\d{4})(\d)/, "$1 $2-$3")
-      .substring(0, 16)
-  }
-
   const maskCEP = (value: string) => {
     return value
       .replace(/\D/g, "")
@@ -83,7 +58,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
 
     if (id === "cnpj") maskedValue = maskCNPJ(value)
     if (id === "telefoneContato") maskedValue = maskPhone(value)
-    if (id === "celular") maskedValue = maskCelular(value)
+    if (id === "celular") maskedValue = maskPhone(value)
     if (id === "cep") {
       maskedValue = maskCEP(value)
       // Preenchimento automático ao digitar 8 dígitos
@@ -236,7 +211,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card className="w-full max-w-4xl">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Button
@@ -295,9 +270,10 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 <Label htmlFor="telefoneContato">Telefone</Label>
                 <Input 
                   id="telefoneContato" 
-                  placeholder="(00) 0000-0000" 
+                  placeholder="(00) 00000-0000" 
                   value={formData.telefoneContato}
                   onChange={(e) => handleChange("telefoneContato", e.target.value)}
+                  maxLength={15}
                 />
               </div>
               <div className="space-y-2">
@@ -307,6 +283,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                   placeholder="(00) 00000-0000" 
                   value={formData.celular}
                   onChange={(e) => handleChange("celular", e.target.value)}
+                  maxLength={15}
                 />
               </div>
             </div>
@@ -318,8 +295,8 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
               <MapPin className="h-5 w-5" />
               <h3 className="font-semibold">Endereço</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2 md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="cep" className={errors.cep ? "text-red-500" : ""}>CEP</Label>
                 <Input 
                   id="cep" 
@@ -330,7 +307,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.cep && <p className="text-xs text-red-500">{errors.cep}</p>}
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-8">
                 <Label htmlFor="rua" className={errors.rua ? "text-red-500" : ""}>Rua</Label>
                 <Input 
                   id="rua" 
@@ -341,7 +318,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.rua && <p className="text-xs text-red-500">{errors.rua}</p>}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="numero" className={errors.numero ? "text-red-500" : ""}>Número</Label>
                 <Input 
                   id="numero" 
@@ -352,7 +329,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.numero && <p className="text-xs text-red-500">{errors.numero}</p>}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="complemento">Complemento</Label>
                 <Input 
                   id="complemento" 
@@ -361,7 +338,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                   onChange={(e) => handleChange("complemento", e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="bairro" className={errors.bairro ? "text-red-500" : ""}>Bairro</Label>
                 <Input 
                   id="bairro" 
@@ -372,7 +349,7 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.bairro && <p className="text-xs text-red-500">{errors.bairro}</p>}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-9">
                 <Label htmlFor="cidade" className={errors.cidade ? "text-red-500" : ""}>Cidade</Label>
                 <Input 
                   id="cidade" 
@@ -383,11 +360,11 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                 />
                 {errors.cidade && <p className="text-xs text-red-500">{errors.cidade}</p>}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="estado">Estado</Label>
                 <Select value={formData.estado} onValueChange={(val) => handleChange("estado", val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="UF" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione a UF" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AC">AC</SelectItem>
@@ -441,18 +418,6 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
                   className={errors.emailLogin ? "border-red-500" : ""}
                 />
                 {errors.emailLogin && <p className="text-xs text-red-500">{errors.emailLogin}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="statusEmpresa">Status</Label>
-                <Select value={formData.statusEmpresa} onValueChange={(val) => handleChange("statusEmpresa", val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="senhaEmpresa" className={errors.senhaEmpresa ? "text-red-500" : ""}>Senha</Label>

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && python -m uvicorn main:app --reload",
+    "dev:backend": "cd backend && python -m uvicorn main:app --reload --port 8001",
     "dev": "npm-run-all --parallel dev:frontend dev:backend"
   },
   "devDependencies": {

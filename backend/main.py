@@ -1,12 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery
 from datetime import datetime
 import random
+import string
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -36,7 +37,7 @@ def extract_password_from_cpf(cpf: str):
     # Pega os 6 primeiros
     return clean_cpf[:6]
 
-def send_real_email(to_email: str, login: str):
+def send_real_email(to_email: str, login: str, senha: str):
     import smtplib
     import os
     from email.mime.text import MIMEText
@@ -61,7 +62,7 @@ Seja bem-vindo(a) à nossa equipe! É com grande satisfação que recebemos voc�
 Informamos que seu acesso ao sistema já foi criado com sucesso. Abaixo, seguem seus dados de login:
 
 Login: {login}
-Senha provisória: os 6 primeiros dígitos do seu CPF
+Senha provisória: {senha}
 
 Por questões de segurança, orientamos que a senha seja alterada no primeiro acesso.
 
@@ -78,11 +79,13 @@ Equipe de TI / Recursos Humanos
         print(f"SMTP_SERVER: {smtp_server}")
         print(f"SMTP_PORT: {smtp_port}")
         print(f"SMTP_USER: {smtp_user}")
+        print(f"SMTP_PASSWORD: {repr(smtp_password)}")
+        print(f"DESTINATARIO: {to_email}")
         # A senha não será printada por segurança, mas verificaremos se existe
         print(f"SMTP_PASS configurado: {'Sim' if smtp_password else 'Não'}")
         
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.set_debuglevel(1) # Ativa logs detalhados do SMTP no terminal
+        server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
+        server.set_debuglevel(1)
         server.ehlo()
         server.starttls()
         server.ehlo()
@@ -93,6 +96,47 @@ Equipe de TI / Recursos Humanos
         return True
     except Exception as e:
         print("Erro detalhado ao enviar:", e)
+        return False
+
+def send_recovery_email(to_email: str, code: str):
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from_name = os.getenv("SMTP_FROM_NAME")
+
+    msg = MIMEMultipart()
+    msg["From"] = f"{smtp_from_name} <{smtp_user}>"
+    msg["To"] = to_email
+    msg["Subject"] = "Código de Recuperação de Senha - HelpDesk"
+
+    body = f"""
+Olá,
+
+Você solicitou a recuperação de senha no sistema HelpDesk.
+
+Seu código de verificação é: {code}
+
+Este código é válido por 30 minutos. Caso não tenha solicitado a recuperação, ignore este e-mail.
+
+Atenciosamente,
+Equipe de Suporte HelpDesk
+"""
+
+    msg.attach(MIMEText(body, "plain", "utf-8" ))
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
+        server.set_debuglevel(1)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, to_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print("Erro ao enviar email de recuperação:", e)
         return False
 
 @app.get("/cep/{cep}")
@@ -170,6 +214,18 @@ def get_db():
 class LoginRequest(BaseModel):
     login: str
     password: str
+
+class RecoveryRequest(BaseModel):
+    email: str
+
+class VerifyCodeRequest(BaseModel):
+    email: str
+    code: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
 
 class ChamadoCreate(BaseModel):
     empresa_id: int
@@ -788,6 +844,19 @@ def update_funcionario(funcionario_id: int, f: FuncionarioUpdate, db: Session = 
         raise HTTPException(status_code=404, detail="Funcionário não encontrado")
     
     update_data = f.dict(exclude_unset=True)
+    
+    # Verificar se o novo e-mail já está em uso por outro funcionário
+    if "email" in update_data and update_data["email"] != db_func.email:
+        existing_email = db.query(Funcionario).filter(Funcionario.email == update_data["email"]).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Este e-mail já está em uso por outro funcionário.")
+            
+    # Verificar se o novo CPF já está em uso por outro funcionário
+    if "cpf" in update_data and update_data["cpf"] != db_func.cpf:
+        existing_cpf = db.query(Funcionario).filter(Funcionario.cpf == update_data["cpf"]).first()
+        if existing_cpf:
+            raise HTTPException(status_code=400, detail="Este CPF já está cadastrado no sistema.")
+
     for key, value in update_data.items():
         setattr(db_func, key, value)
     
@@ -799,6 +868,9 @@ def update_funcionario(funcionario_id: int, f: FuncionarioUpdate, db: Session = 
         registrar_log(db, "info", "Funcionários", f"Dados do funcionário {db_func.nome} atualizados", empresa_id=db_func.empresa_id)
         
         return db_func
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar funcionário: {str(e)}")
@@ -826,8 +898,19 @@ def delete_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao excluir funcionário: {str(e)}")
 
 @app.post("/funcionarios")
-def create_funcionario(funcionario: FuncionarioCreate, db: Session = Depends(get_db)):
+def create_funcionario(funcionario: FuncionarioCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
+        # 1. Verificar se o e-mail já existe
+        existing_email = db.query(Funcionario).filter(Funcionario.email == funcionario.email).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Este e-mail já está em uso por outro funcionário.")
+            
+        # 2. Verificar se o CPF já existe
+        if funcionario.cpf:
+            existing_cpf = db.query(Funcionario).filter(Funcionario.cpf == funcionario.cpf).first()
+            if existing_cpf:
+                raise HTTPException(status_code=400, detail="Este CPF já está cadastrado no sistema.")
+
         # Gerar login de 8 dígitos aleatórios
         login_gerado = ''.join([str(random.randint(0, 9)) for _ in range(8)])
         
@@ -836,7 +919,7 @@ def create_funcionario(funcionario: FuncionarioCreate, db: Session = Depends(get
             login_gerado = ''.join([str(random.randint(0, 9)) for _ in range(8)])
             
         # Senha inicial: 6 primeiros dígitos do CPF (removendo pontos e traço)
-        senha_inicial = funcionario.cpf.replace(".", "").replace("-", "")[:6]
+        senha_inicial = funcionario.cpf.replace(".", "").replace("-", "")[:6] if funcionario.cpf else "123456"
         
         db_funcionario = Funcionario(
             empresa_id=funcionario.empresa_id,
@@ -855,6 +938,13 @@ def create_funcionario(funcionario: FuncionarioCreate, db: Session = Depends(get
         db.commit()
         db.refresh(db_funcionario)
         
+        # Chamada direta sem BackgroundTasks para teste
+        try:
+            email_ok = send_real_email(db_funcionario.email, db_funcionario.login, senha_inicial)
+        except Exception as e:
+            print(f"Erro ao enviar email: {e}")
+            email_ok = False
+        
         # Retornar o funcionário com o login gerado explicitamente
         return {
             "id": db_funcionario.id,
@@ -862,11 +952,14 @@ def create_funcionario(funcionario: FuncionarioCreate, db: Session = Depends(get
             "login": db_funcionario.login,
             "email": db_funcionario.email,
             "senha": senha_inicial, # Apenas para o primeiro cadastro
-            "email_enviado": True # Simulação
+            "email_enviado": email_ok
         }
+    except HTTPException as e:
+        db.rollback()
+        raise e
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Erro ao criar funcionário: {str(e)}")
 
 @app.get("/stats/suporte")
 def get_stats_suporte(tecnico_id: int | None = None, db: Session = Depends(get_db)):
@@ -998,6 +1091,71 @@ def cancelar_chamado(chamado_id: int, db: Session = Depends(get_db)):
     registrar_log(db, "warning", "Chamados", f"Chamado CH-{chamado.id} cancelado pelo usuário", usuario_id=chamado.solicitante_id, usuario_nome=user_nome, empresa_id=chamado.empresa_id)
     
     db.commit()
+
+@app.post("/recovery/request")
+def request_password_recovery(req: RecoveryRequest, db: Session = Depends(get_db)):
+    user = db.query(Funcionario).filter(Funcionario.email == req.email).first()
+    if not user:
+        # Por segurança, não confirmamos se o e-mail existe ou não
+        return {"message": "Se o e-mail estiver cadastrado, um código será enviado."}
+    
+    # Gerar código de 5 caracteres (letras e números)
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    
+    # Salvar no banco
+    recovery = PasswordRecovery(email=req.email, code=code)
+    db.add(recovery)
+    db.commit()
+    
+    # Enviar e-mail
+    send_recovery_email(req.email, code)
+    
+    return {"message": "Se o e-mail estiver cadastrado, um código será enviado."}
+
+@app.post("/recovery/verify")
+def verify_recovery_code(req: VerifyCodeRequest, db: Session = Depends(get_db)):
+    recovery = db.query(PasswordRecovery).filter(
+        PasswordRecovery.email == req.email,
+        PasswordRecovery.code == req.code,
+        PasswordRecovery.used == 0
+    ).order_by(PasswordRecovery.created_at.desc()).first()
+    
+    if not recovery:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+    
+    # Verificar se expirou (30 minutos)
+    from datetime import datetime, timedelta
+    if datetime.utcnow() - recovery.created_at > timedelta(minutes=30):
+        raise HTTPException(status_code=400, detail="Código expirado.")
+        
+    return {"message": "Código válido."}
+
+@app.post("/recovery/reset")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    recovery = db.query(PasswordRecovery).filter(
+        PasswordRecovery.email == req.email,
+        PasswordRecovery.code == req.code,
+        PasswordRecovery.used == 0
+    ).order_by(PasswordRecovery.created_at.desc()).first()
+    
+    if not recovery:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+    
+    # Verificar se expirou (30 minutos)
+    from datetime import datetime, timedelta
+    if datetime.utcnow() - recovery.created_at > timedelta(minutes=30):
+        raise HTTPException(status_code=400, detail="Código expirado.")
+    
+    user = db.query(Funcionario).filter(Funcionario.email == req.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    
+    # Atualizar senha
+    user.senha = req.new_password
+    recovery.used = 1
+    db.commit()
+    
+    return {"message": "Senha atualizada com sucesso!"}
     db.refresh(chamado)
     return format_chamado(chamado)
 
