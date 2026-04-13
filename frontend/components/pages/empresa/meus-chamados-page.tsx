@@ -304,7 +304,6 @@ export function MeusChamadosPage() {
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Nº</TableHead>
                   <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Título</TableHead>
                   <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tipo</TableHead>
                   <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Prioridade</TableHead>
@@ -316,19 +315,19 @@ export function MeusChamadosPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Carregando chamados...
                     </TableCell>
                   </TableRow>
                 ) : chamadosFiltrados.length > 0 ? (
                   chamadosFiltrados.map((chamado) => (
                     <TableRow key={chamado.id} className="data-table-row group">
-                      <TableCell className="py-4 text-left">
-                        <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
-                          CH-{chamado.id.toString().padStart(3, '0')}
-                        </span>
+                      <TableCell className="py-4 text-left font-medium text-sm text-gray-700">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-[#3ba5d8] mb-1">CH-{chamado.id.toString().padStart(3, '0')}</span>
+                          <span>{chamado.titulo}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="py-4 text-left font-medium text-sm text-gray-700">{chamado.titulo}</TableCell>
                       <TableCell className="py-4 text-left">
                         <Badge variant="outline" className="capitalize text-[10px]">
                           {chamado.tipo}

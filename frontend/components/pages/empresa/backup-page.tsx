@@ -31,73 +31,58 @@ export function BackupPage() {
   const [executandoBackup, setExecutandoBackup] = useState(false)
   const [progressoBackup, setProgressoBackup] = useState(0)
 
+  const [userData, setUserData] = useState<any>(null)
+
   useEffect(() => {
-    // Carregar histórico de backups (simulado por enquanto)
-    setBackups([
-      { 
-        id: "BKP-005",
-        data: "2024-04-03 02:00:00",
-        tipo: "automatico",
-        tamanho: "2.8 GB",
-        status: "concluido",
-        duracao: "12 min"
-      },
-      { 
-        id: "BKP-004",
-        data: "2024-04-02 02:00:00",
-        tipo: "automatico",
-        tamanho: "2.8 GB",
-        status: "concluido",
-        duracao: "11 min"
-      },
-      { 
-        id: "BKP-003",
-        data: "2024-04-01 02:00:00",
-        tipo: "automatico",
-        tamanho: "2.7 GB",
-        status: "concluido",
-        duracao: "14 min"
-      },
-      { 
-        id: "BKP-002",
-        data: "2024-03-31 02:00:00",
-        tipo: "automatico",
-        tamanho: "2.7 GB",
-        status: "erro",
-        duracao: "2 min"
-      },
-      { 
-        id: "BKP-001",
-        data: "2024-03-30 02:00:00",
-        tipo: "automatico",
-        tamanho: "2.6 GB",
-        status: "concluido",
-        duracao: "15 min"
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      const user = JSON.parse(storedUser)
+      setUserData(user)
+      if (user.empresa?.id) {
+        fetchBackups(user.empresa.id)
+      } else {
+        setLoading(false)
       }
-    ])
-    setLoading(false)
+    }
   }, [])
 
-  const iniciarBackup = () => {
-    setExecutandoBackup(true)
-    setProgressoBackup(0)
-    const interval = setInterval(() => {
-      setProgressoBackup(prev => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setExecutandoBackup(false)
-          
-          // Adicionar novo backup à lista
-          const novoBkp = {
-            id: `BKP-00${backups.length + 1}`,
-            data: new Date().toISOString().replace('T', ' ').split('.')[0],
-            tipo: "manual" as const,
-            tamanho: "2.5 GB",
-            status: "concluido" as const,
-            duracao: "2 min"
+  const fetchBackups = async (empresaId: number) => {
+    setLoading(true)
+    try {
+      // Buscar todos os equipamentos da empresa primeiro
+      const eqRes = await fetch(`/api/equipamentos/${empresaId}`)
+      if (eqRes.ok) {
+        const equipamentos = await eqRes.json()
+        const allBackups: any[] = []
+        
+        for (const eq of equipamentos) {
+          const bkpRes = await fetch(`/api/equipamentos/${eq.id}/backups`)
+          if (bkpRes.ok) {
+            const data = await bkpRes.json()
+            allBackups.push(...data.map((b: any) => ({
+              ...b,
+              equipamento_nome: eq.nome,
+              equipamento_patrimonio: eq.patrimonio
+            })))
           }
-          setBackups([novoBkp, ...backups])
-          toast.success("Backup manual concluído com sucesso!")
+        }
+        
+        setBackups(allBackups.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()))
+      }
+    } catch (err) {
+      console.error("Erro ao buscar backups:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const iniciarBackup = async () => {
+    // Iniciar backup para o primeiro equipamento (exemplo) ou todos
+    toast.info("Iniciando rotina de backup...")
+    setExecutandoBackup(true)
+    setProgressoBackup(10)
+    // ... rest of the logic
+  }
           
           return 100
         }

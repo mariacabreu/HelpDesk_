@@ -92,6 +92,21 @@ class Equipamento(Base):
     # Relacionamentos
     empresa = relationship("Empresa", back_populates="equipamentos")
     chamados = relationship("Chamado", back_populates="equipamento")
+    backups = relationship("BackupEquipamento", back_populates="equipamento", cascade="all, delete-orphan")
+
+class BackupEquipamento(Base):
+    __tablename__ = 'backups_equipamentos'
+    
+    id = Column(Integer, primary_key=True)
+    equipamento_id = Column(Integer, ForeignKey('equipamentos.id'))
+    data_inicio = Column(DateTime, default=datetime.utcnow)
+    data_fim = Column(DateTime)
+    status = Column(String(20), default="sucesso") # sucesso, falha, em_progresso
+    tamanho_kb = Column(Integer)
+    log = Column(Text)
+    
+    # Relacionamentos
+    equipamento = relationship("Equipamento", back_populates="backups")
 
 class Chamado(Base):
     __tablename__ = 'chamados'
@@ -121,6 +136,19 @@ class Chamado(Base):
     atribuido_a = relationship("Funcionario", foreign_keys=[atribuido_a_id], back_populates="chamados_atribuidos")
     equipamento = relationship("Equipamento", back_populates="chamados")
     historico = relationship("HistoricoChamado", back_populates="chamado", cascade="all, delete-orphan")
+    anexos = relationship("AnexoChamado", back_populates="chamado", cascade="all, delete-orphan")
+
+class AnexoChamado(Base):
+    __tablename__ = 'anexos_chamados'
+    
+    id = Column(Integer, primary_key=True)
+    chamado_id = Column(Integer, ForeignKey('chamados.id'))
+    nome_arquivo = Column(String(255), nullable=False)
+    caminho_arquivo = Column(String(255), nullable=False)
+    data_upload = Column(DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    chamado = relationship("Chamado", back_populates="anexos")
 
 class HistoricoChamado(Base):
     __tablename__ = 'historico_chamados'

@@ -150,7 +150,27 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       }
 
       const data = await response.json()
-      setNovoChamadoId(data?.id ?? null)
+      const criadoId = data?.id
+      
+      // Fazer upload dos anexos se houver
+      if (criadoId && arquivos.length > 0) {
+        console.log(`Fazendo upload de ${arquivos.length} anexos para o chamado ${criadoId}`)
+        for (const arquivo of arquivos) {
+          const formData = new FormData()
+          formData.append("file", arquivo)
+          
+          try {
+            await fetch(`/api/chamados/${criadoId}/anexos`, {
+              method: "POST",
+              body: formData,
+            })
+          } catch (uploadErr) {
+            console.error(`Erro ao subir arquivo ${arquivo.name}:`, uploadErr)
+          }
+        }
+      }
+
+      setNovoChamadoId(criadoId ?? null)
       setSuccessOpen(true)
       limparFormulario()
     } catch (err: any) {

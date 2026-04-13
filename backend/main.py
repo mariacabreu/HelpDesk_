@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery
-from datetime import datetime
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento
+from datetime import datetime, timedelta
+import shutil
 import random
 import string
 import smtplib
@@ -18,6 +19,60 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
+
+@app.post("/equipamentos/{equipamento_id}/backup")
+def perform_backup(equipamento_id: int, db: Session = Depends(get_db)):
+    eq = db.query(Equipamento).filter(Equipamento.id == equipamento_id).first()
+    if not eq:
+        raise HTTPException(status_code=404, detail="Equipamento não encontrado")
+    
+    # Simular backup real
+    backup = BackupEquipamento(
+        equipamento_id=equipamento_id,
+        data_inicio=datetime.utcnow(),
+        status="em_progresso",
+        tamanho_kb=random.randint(500, 50000)
+    )
+    db.add(backup)
+    db.commit()
+    
+    # Em um cenário real, aqui haveria a lógica de cópia de arquivos/dump de DB
+    # Simulando conclusão com sucesso
+    backup.status = "sucesso"
+    backup.data_fim = datetime.utcnow()
+    backup.log = f"Backup concluído com sucesso para {eq.nome} ({eq.patrimonio})."
+    
+    db.commit()
+    return {"id": backup.id, "status": "sucesso", "data": backup.data_fim}
+
+@app.get("/equipamentos/{equipamento_id}/backups")
+def get_backups(equipamento_id: int, db: Session = Depends(get_db)):
+    backups = db.query(BackupEquipamento).filter(BackupEquipamento.equipamento_id == equipamento_id).order_by(BackupEquipamento.data_inicio.desc()).all()
+    return [
+        {
+            "id": b.id,
+            "data": b.data_inicio,
+            "status": b.status,
+            "tamanho": b.tamanho_kb,
+            "log": b.log
+        } for b in backups
+    ]
+
+@app.get("/empresas/{empresa_id}/backup-stats")
+def get_backup_stats(empresa_id: int, db: Session = Depends(get_db)):
+    # Buscar todos os equipamentos da empresa
+    equip_ids = [e.id for e in db.query(Equipamento.id).filter(Equipamento.empresa_id == empresa_id).all()]
+    
+    # Contar backups com sucesso
+    total_backups = db.query(BackupEquipamento).filter(BackupEquipamento.equipamento_id.in_(equip_ids), BackupEquipamento.status == "sucesso").count()
+    
+    # Último backup realizado
+    ultimo_backup = db.query(BackupEquipamento).filter(BackupEquipamento.equipamento_id.in_(equip_ids), BackupEquipamento.status == "sucesso").order_by(BackupEquipamento.data_inicio.desc()).first()
+    
+    return {
+        "total": total_backups,
+        "ultimo_data": ultimo_backup.data_inicio if ultimo_backup else None
+    }
 
 def generate_unique_login(db: Session):
     while True:
@@ -556,6 +611,11 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
 def get_equipamentos(empresa_id: int, db: Session = Depends(get_db)):
     return db.query(Equipamento).filter(Equipamento.empresa_id == empresa_id).all()
 
+@app.get("/equipamentos/{equipamento_id}/chamados")
+def get_equipamento_chamados(equipamento_id: int, db: Session = Depends(get_db)):
+    chamados = db.query(Chamado).filter(Chamado.equipamento_id == equipamento_id).order_by(Chamado.data_abertura.desc()).all()
+    return [format_chamado(c) for c in chamados]
+
 @app.post("/equipamentos")
 def create_equipamento(e: EquipamentoCreate, db: Session = Depends(get_db)):
     # patrimônio único
@@ -651,8 +711,41 @@ def format_chamado(c: Chamado):
                 "data": h.data,
                 "usuario": h.usuario.nome if h.usuario else "Sistema"
             } for h in (c.historico or [])
-        ]
+        ],
+        "anexos": [a.nome_arquivo for a in (c.anexos or [])]
     }
+
+@app.post("/chamados/{chamado_id}/anexos")
+async def upload_anexo(chamado_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    db_chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
+    if not db_chamado:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado")
+    
+    # Criar pasta de uploads se não existir
+    upload_dir = "uploads"
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    
+    # Gerar nome único para o arquivo
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{chamado_id}_{int(datetime.now().timestamp())}_{random.randint(1000, 9999)}{file_extension}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        db_anexo = AnexoChamado(
+            chamado_id=chamado_id,
+            nome_arquivo=file.filename,
+            caminho_arquivo=file_path
+        )
+        db.add(db_anexo)
+        db.commit()
+        return {"success": True, "filename": file.filename}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer upload: {str(e)}")
 
 @app.get("/chamados")
 def get_all_chamados(db: Session = Depends(get_db)):
@@ -833,9 +926,28 @@ def get_chamados_solicitante(solicitante_id: int, db: Session = Depends(get_db))
     chamados = db.query(Chamado).filter(Chamado.solicitante_id == solicitante_id).all()
     return [format_chamado(c) for c in chamados]
 
+def format_funcionario(f: Funcionario):
+    return {
+        "id": f.id,
+        "empresa_id": f.empresa_id,
+        "nome": f.nome,
+        "cpf": f.cpf,
+        "email": f.email,
+        "telefone": f.telefone,
+        "cargo": f.cargo,
+        "setor": f.setor,
+        "nivel": f.nivel,
+        "login": f.login,
+        "senha": f.senha,
+        "permissao": f.permissao,
+        "status": f.status,
+        "data_cadastro": f.data_cadastro
+    }
+
 @app.get("/funcionarios/empresa/{empresa_id}")
 def get_funcionarios_empresa(empresa_id: int, db: Session = Depends(get_db)):
-    return db.query(Funcionario).filter(Funcionario.empresa_id == empresa_id).all()
+    funcionarios = db.query(Funcionario).filter(Funcionario.empresa_id == empresa_id).all()
+    return [format_funcionario(f) for f in funcionarios]
 
 @app.patch("/funcionarios/{funcionario_id}")
 def update_funcionario(funcionario_id: int, f: FuncionarioUpdate, db: Session = Depends(get_db)):

@@ -226,6 +226,9 @@ export function GestaoFuncionariosPage() {
   }
 
   const funcionariosFiltrados = funcionarios.filter(func => {
+    // Filtrar perfil empresa (gestor master)
+    if (func.cargo === "Empresa" || func.permissao === "empresa") return false
+    
     if (filtroDepartamento && filtroDepartamento !== "todos" && func.setor !== filtroDepartamento) return false
     if (filtroStatus && filtroStatus !== "todos" && func.status !== filtroStatus) return false
     if (busca && !func.nome.toLowerCase().includes(busca.toLowerCase()) && 
@@ -254,7 +257,7 @@ export function GestaoFuncionariosPage() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -263,7 +266,7 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">
-                  {funcionarios.length}
+                  {funcionariosFiltrados.length}
                 </p>
                 <p className="text-xs text-muted-foreground">Total de Funcionários</p>
               </div>
@@ -278,24 +281,9 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">
-                  {funcionarios.filter(f => f.status === "ativo").length}
+                  {funcionariosFiltrados.filter(f => f.status === "ativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Ativos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                <Shield className="size-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-primary">
-                  {funcionarios.filter(f => f.permissao === "admin").length}
-                </p>
-                <p className="text-xs text-muted-foreground">Administradores</p>
               </div>
             </div>
           </CardContent>
@@ -308,7 +296,7 @@ export function GestaoFuncionariosPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">
-                  {funcionarios.filter(f => f.status === "inativo").length}
+                  {funcionariosFiltrados.filter(f => f.status === "inativo").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Inativos</p>
               </div>
@@ -549,24 +537,11 @@ export function GestaoFuncionariosPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Calendar className="size-4 text-[#3ba5d8]" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Data de Cadastro</p>
-                    <p className="text-sm font-medium">{formatDateShort(funcionarioSelecionado.dataCadastro)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <Shield className="size-4 text-[#3ba5d8]" />
                   <div>
                     <p className="text-xs text-muted-foreground">Nível</p>
                     <p className="text-sm font-medium uppercase">{funcionarioSelecionado.nivel || "N1"}</p>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Permissão</p>
-                  <Badge className={permissaoConfig[funcionarioSelecionado.permissao as keyof typeof permissaoConfig].cor}>
-                    {permissaoConfig[funcionarioSelecionado.permissao as keyof typeof permissaoConfig].label}
-                  </Badge>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Status</p>

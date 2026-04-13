@@ -49,23 +49,13 @@ const menuItems = [
     id: "meus-equipamentos",
   },
   {
-    title: "Gestão de Funcionários",
+    title: "Funcionários",
     icon: Users,
     id: "gestao-funcionarios",
   },
 ]
 
 const adminItems = [
-  {
-    title: "Logs do Sistema",
-    icon: FileText,
-    id: "logs",
-  },
-  {
-    title: "Backup",
-    icon: Database,
-    id: "backup",
-  },
   {
     title: "Auditoria",
     icon: Shield,

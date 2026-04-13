@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
-  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw, ShieldCheck
+  Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw, ShieldCheck,
+  Info, CheckCircle, AlertTriangle, AlertCircle
 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -26,128 +27,20 @@ const moduloIcons = {
   Configurações: Settings,
 }
 
-const acaoConfig = {
-  Criar: { label: "Criar", cor: "bg-green-100 text-green-800" },
-  Atualizar: { label: "Atualizar", cor: "bg-blue-100 text-blue-800" },
-  Excluir: { label: "Excluir", cor: "bg-red-100 text-red-800" },
-  Executar: { label: "Executar", cor: "bg-purple-100 text-purple-800" },
+const tipoConfig = {
+  info: { label: "Info", cor: "bg-blue-100 text-blue-800", icon: Info },
+  success: { label: "Sucesso", cor: "bg-green-100 text-green-800", icon: CheckCircle },
+  warning: { label: "Alerta", cor: "bg-yellow-100 text-yellow-800", icon: AlertTriangle },
+  error: { label: "Erro", cor: "bg-red-100 text-red-800", icon: AlertCircle },
 }
-
-const auditoriaMock = [
-  {
-    id: "AUD-001",
-    timestamp: "2024-04-04T10:30:00Z",
-    usuario: "Maria Souza",
-    modulo: "Chamados",
-    acao: "Criar",
-    descricao: "Novo chamado CH-005 criado para 'Notebook lento'",
-    ip: "192.168.1.15",
-    detalhes: {
-      antes: null,
-      depois: { titulo: "Notebook lento", prioridade: "alta", tipo: "incidente" }
-    }
-  },
-  {
-    id: "AUD-002",
-    timestamp: "2024-04-04T11:15:20Z",
-    usuario: "Maria Souza",
-    modulo: "Funcionários",
-    acao: "Atualizar",
-    descricao: "Alteração de cargo do funcionário João Silva",
-    ip: "192.168.1.15",
-    detalhes: {
-      antes: { cargo: "Analista Jr" },
-      depois: { cargo: "Analista Pleno" }
-    }
-  },
-  {
-    id: "AUD-003",
-    timestamp: "2024-04-04T12:00:00Z",
-    usuario: "Sistema",
-    modulo: "Backup",
-    acao: "Executar",
-    descricao: "Execução de backup manual solicitada",
-    ip: "127.0.0.1",
-    detalhes: {
-      antes: null,
-      depois: { status: "em_andamento", tipo: "manual" }
-    }
-  },
-  {
-    id: "AUD-004",
-    timestamp: "2024-04-03T15:45:10Z",
-    usuario: "João Silva",
-    modulo: "Equipamentos",
-    acao: "Criar",
-    descricao: "Novo equipamento PAT-2024-010 cadastrado",
-    ip: "192.168.1.16",
-    detalhes: {
-      antes: null,
-      depois: { nome: "Monitor LG 29", patrimonio: "PAT-2024-010", status: "ativo" }
-    }
-  },
-  {
-    id: "AUD-005",
-    timestamp: "2024-04-03T14:20:00Z",
-    usuario: "Maria Souza",
-    modulo: "Configurações",
-    acao: "Atualizar",
-    descricao: "Alteração do horário de backup automático",
-    ip: "192.168.1.15",
-    detalhes: {
-      antes: { horario: "02:00" },
-      depois: { horario: "03:00" }
-    }
-  },
-  {
-    id: "AUD-006",
-    timestamp: "2024-04-03T10:00:00Z",
-    usuario: "Sistema",
-    modulo: "Backup",
-    acao: "Executar",
-    descricao: "Backup automático concluído com sucesso",
-    ip: "127.0.0.1",
-    detalhes: {
-      antes: null,
-      depois: { status: "concluido", tamanho: "2.8 GB" }
-    }
-  },
-  {
-    id: "AUD-007",
-    timestamp: "2024-04-02T16:30:00Z",
-    usuario: "Maria Souza",
-    modulo: "Funcionários",
-    acao: "Criar",
-    descricao: "Novo funcionário 'Carlos Lima' cadastrado",
-    ip: "192.168.1.15",
-    detalhes: {
-      antes: null,
-      depois: { nome: "Carlos Lima", cargo: "Estagiário", setor: "TI" }
-    }
-  },
-  {
-    id: "AUD-008",
-    timestamp: "2024-04-02T09:15:00Z",
-    usuario: "João Silva",
-    modulo: "Chamados",
-    acao: "Atualizar",
-    descricao: "Status do chamado CH-001 alterado para 'Em Atendimento'",
-    ip: "192.168.1.16",
-    detalhes: {
-      antes: { status: "aberto" },
-      depois: { status: "em_atendimento" }
-    }
-  }
-]
 
 export function AuditoriaPage() {
   const [userData, setUserData] = useState<any>(null)
-  const [auditoria, setAuditoria] = useState<any[]>([])
+  const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [filtroModulo, setFiltroModulo] = useState("")
   const [filtroAcao, setFiltroAcao] = useState("")
-  const [filtroUsuario, setFiltroUsuario] = useState("")
   const [registroSelecionado, setRegistroSelecionado] = useState<any | null>(null)
   const [modalDetalhes, setModalDetalhes] = useState(false)
 
@@ -157,29 +50,42 @@ export function AuditoriaPage() {
       const user = JSON.parse(storedUser)
       setUserData(user)
       
-      // Simulação de busca de auditoria (não há endpoint real para isso ainda)
-      setAuditoria(auditoriaMock)
-      setLoading(false)
+      // Buscar logs reais se houver empresa
+      if (user.empresa?.id) {
+        fetch(`/api/logs?empresa_id=${user.empresa.id}`)
+          .then(res => res.json())
+          .then(data => setLogs(data))
+          .catch(err => console.error("Erro ao buscar logs para auditoria:", err))
+          .finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
     }
   }, [])
 
-  const registrosFiltrados = auditoria.filter(item => {
+  const registrosFiltrados = logs.filter(item => {
     if (filtroModulo && filtroModulo !== "todos" && item.modulo !== filtroModulo) return false
     if (filtroAcao && filtroAcao !== "todas" && item.acao !== filtroAcao) return false
-    if (filtroUsuario && filtroUsuario !== "todos" && item.usuario !== filtroUsuario) return false
-    if (busca && !item.descricao.toLowerCase().includes(busca.toLowerCase()) && 
-        !item.usuario.toLowerCase().includes(busca.toLowerCase())) return false
+    
+    const termoBusca = busca.toLowerCase()
+    if (termoBusca && 
+        !item.acao.toLowerCase().includes(termoBusca) && 
+        !(item.usuario_nome || "").toLowerCase().includes(termoBusca)) {
+      return false
+    }
     return true
   })
 
-  const usuarios = [...new Set(auditoria.map(r => r.usuario))]
+  const usuarios = [...new Set(logs.map(r => r.usuario_nome || "Sistema"))]
 
   const atualizarAuditoria = () => {
-    setLoading(true)
-    setTimeout(() => {
-      setAuditoria([...auditoriaMock].sort(() => Math.random() - 0.5))
-      setLoading(false)
-    }, 800)
+    if (userData?.empresa?.id) {
+      setLoading(true)
+      fetch(`/api/logs?empresa_id=${userData.empresa.id}`)
+        .then(res => res.json())
+        .then(data => setLogs(data))
+        .finally(() => setLoading(false))
+    }
   }
 
   const exportarPDF = () => {
@@ -233,11 +139,13 @@ export function AuditoriaPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <Shield className="size-5 text-primary" />
+                <Info className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">{auditoria.length}</p>
-                <p className="text-xs text-muted-foreground">Total de Registros</p>
+                <p className="text-2xl font-bold text-primary">
+                  {logs.filter(l => l.tipo === "info").length}
+                </p>
+                <p className="text-xs text-muted-foreground">Informativos</p>
               </div>
             </div>
           </CardContent>
@@ -246,13 +154,13 @@ export function AuditoriaPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <FileText className="size-5 text-green-600" />
+                <CheckCircle className="size-5 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">
-                  {auditoria.filter(r => r.acao === "Criar").length}
+                  {logs.filter(l => l.tipo === "success").length}
                 </p>
-                <p className="text-xs text-muted-foreground">Criações</p>
+                <p className="text-xs text-muted-foreground">Sucessos</p>
               </div>
             </div>
           </CardContent>
@@ -261,13 +169,13 @@ export function AuditoriaPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
-                <Settings className="size-5 text-yellow-600" />
+                <AlertTriangle className="size-5 text-yellow-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">
-                  {auditoria.filter(r => r.acao === "Atualizar").length}
+                  {logs.filter(l => l.tipo === "warning").length}
                 </p>
-                <p className="text-xs text-muted-foreground">Atualizações</p>
+                <p className="text-xs text-muted-foreground">Alertas</p>
               </div>
             </div>
           </CardContent>
@@ -275,12 +183,14 @@ export function AuditoriaPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                <User className="size-5 text-purple-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                <AlertCircle className="size-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">{usuarios.length}</p>
-                <p className="text-xs text-muted-foreground">Usuários Ativos</p>
+                <p className="text-2xl font-bold text-primary">
+                  {logs.filter(l => l.tipo === "error").length}
+                </p>
+                <p className="text-xs text-muted-foreground">Erros</p>
               </div>
             </div>
           </CardContent>
@@ -340,20 +250,6 @@ export function AuditoriaPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Usuário</Label>
-              <Select value={filtroUsuario} onValueChange={setFiltroUsuario}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {usuarios.map(usuario => (
-                    <SelectItem key={usuario} value={usuario}>{usuario}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-end gap-2">
               <Button 
                 variant="outline" 
@@ -362,7 +258,6 @@ export function AuditoriaPage() {
                   setBusca("")
                   setFiltroModulo("")
                   setFiltroAcao("")
-                  setFiltroUsuario("")
                 }}
               >
                 <RotateCcw className="size-4" />
@@ -389,46 +284,62 @@ export function AuditoriaPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {registrosFiltrados.map((registro) => {
-                  const ModuloIcon = moduloIcons[registro.modulo as keyof typeof moduloIcons] || FileText
-                  return (
-                    <TableRow key={registro.id} className="data-table-row group">
-                      <TableCell className="py-4 text-left">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(registro.timestamp).split(' ')[0]}</span>
-                          <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(registro.timestamp).split(' ')[1]}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                          <ModuloIcon className="size-4 text-primary" />
-                          {registro.modulo}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-bold text-left text-sm text-[#1a3a5c]">{registro.usuario}</TableCell>
-                      <TableCell className="text-left">
-                        <Badge className={`${acaoConfig[registro.acao as keyof typeof acaoConfig]?.cor} rounded-full px-2 text-[9px] shadow-none border-none`}>
-                          {registro.acao}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground text-left">{registro.ip}</TableCell>
-                      <TableCell className="py-4 text-left">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
-                          onClick={() => {
-                            setRegistroSelecionado(registro)
-                            setModalDetalhes(true)
-                          }}
-                        >
-                          <Eye className="size-4 mr-1.5" />
-                          Ver
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Carregando auditoria...
+                    </TableCell>
+                  </TableRow>
+                ) : registrosFiltrados.length > 0 ? (
+                  registrosFiltrados.map((registro) => {
+                    const ModuloIcon = moduloIcons[registro.modulo as keyof typeof moduloIcons] || FileText
+                    return (
+                      <TableRow key={registro.id} className="data-table-row group">
+                        <TableCell className="py-4 text-left">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(registro.timestamp).split(' ')[0]}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(registro.timestamp).split(' ')[1]}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-left">
+                          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                            <ModuloIcon className="size-4 text-primary" />
+                            {registro.modulo}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-bold text-left text-sm text-[#1a3a5c]">{registro.usuario_nome || "Sistema"}</TableCell>
+                        <TableCell className="text-left">
+                          <div className="flex flex-col gap-1">
+                            <Badge className={`${tipoConfig[registro.tipo as keyof typeof tipoConfig]?.cor} rounded-full px-2 text-[9px] w-fit`}>
+                              {registro.tipo.toUpperCase()}
+                            </Badge>
+                            <span className="text-xs text-gray-700">{registro.acao}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground text-left">{registro.ip || "N/A"}</TableCell>
+                        <TableCell className="text-left">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="size-8"
+                            onClick={() => {
+                              setRegistroSelecionado(registro)
+                              setModalDetalhes(true)
+                            }}
+                          >
+                            <Eye className="size-4 text-muted-foreground" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhum registro de auditoria encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

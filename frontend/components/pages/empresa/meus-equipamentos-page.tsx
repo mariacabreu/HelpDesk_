@@ -182,9 +182,67 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     return true
   })
 
-  const abrirDetalhes = (equipamento: any) => {
+  const [modalBackups, setModalBackups] = useState(false)
+  const [backups, setBackups] = useState<any[]>([])
+  const [loadingBackup, setLoadingBackup] = useState(false)
+
+  const abrirBackups = async (equipamento: any) => {
+    setEquipamentoSelecionado(equipamento)
+    setModalBackups(true)
+    fetchBackups(equipamento.id)
+  }
+
+  const fetchBackups = async (id: number) => {
+    try {
+      const res = await fetch(`/api/equipamentos/${id}/backups`)
+      if (res.ok) {
+        const data = await res.json()
+        setBackups(data)
+      }
+    } catch (err) {
+      console.error("Erro ao buscar backups:", err)
+    }
+  }
+
+  const handleManualBackup = async () => {
+    if (!equipamentoSelecionado) return
+    setLoadingBackup(true)
+    try {
+      const res = await fetch(`/api/equipamentos/${equipamentoSelecionado.id}/backup`, {
+        method: "POST"
+      })
+      if (res.ok) {
+        fetchBackups(equipamentoSelecionado.id)
+      }
+    } catch (err) {
+      console.error("Erro ao realizar backup:", err)
+    } finally {
+      setLoadingBackup(false)
+    }
+  }
+
+  const abrirDetalhes = async (equipamento: any) => {
     setEquipamentoSelecionado(equipamento)
     setModalDetalhes(true)
+    
+    // Buscar histórico de chamados para este equipamento
+    try {
+      const res = await fetch(`/api/equipamentos/${equipamento.id}/chamados`)
+      if (res.ok) {
+        const data = await res.json()
+        setEquipamentoSelecionado((prev: any) => ({
+          ...prev,
+          historicoChamados: data.map((c: any) => ({
+            id: `CH-${String(c.id).padStart(3, "0")}`,
+            titulo: c.titulo,
+            data: new Date(c.data_abertura).toLocaleDateString("pt-BR"),
+            status: c.status
+          }))
+        }))
+      }
+    } catch (err) {
+      console.error("Erro ao buscar histórico do equipamento:", err)
+    }
   }
 
   const cadastrarEquipamento = async () => {
@@ -323,14 +381,13 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
             <Table>
               <TableHeader>
                 <TableRow className="data-table-header">
-                  <TableHead className="w-[80px] text-primary font-semibold border-border text-left">ID</TableHead>
                   <TableHead className="text-primary font-semibold border-border text-left">Equipamento</TableHead>
                   <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Tipo</TableHead>
                   <TableHead className="w-[130px] text-primary font-semibold border-border text-left">Patrimônio</TableHead>
                   <TableHead className="w-[150px] text-primary font-semibold border-border text-left">Modelo</TableHead>
                   <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Status</TableHead>
                   <TableHead className="w-[80px] text-primary font-semibold border-border text-left">Chamados</TableHead>
-                  <TableHead className="w-[200px] text-primary font-semibold border-border text-left">Ações</TableHead>
+                  <TableHead className="w-[150px] text-primary font-semibold border-border text-left">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,7 +403,6 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                     const config = statusConfig[String(eq.status || "").toLowerCase() as keyof typeof statusConfig]
                     return (
                       <TableRow key={eq.id} className="data-table-row">
-                        <TableCell className="font-mono text-sm font-bold border-border text-left">{eq.id}</TableCell>
                         <TableCell className="border-border text-left">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg">
@@ -371,42 +427,38 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
+                              className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 w-8 p-0"
                               title="Visualizar" 
                               onClick={() => abrirDetalhes(eq)}
                             >
-                              <Eye className="size-4 mr-1.5" />
-                              Ver
+                              <Eye className="size-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-green-600 hover:text-green-600 hover:bg-green-50 h-8 px-2"
-                              title="Abrir Chamado"
-                              onClick={() => handleOpenTicket(eq.id)}
-                            >
-                              <ClipboardList className="size-4 mr-1.5" />
-                              Chamado
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-primary hover:text-primary hover:bg-primary/10 h-8 px-2"
+                              className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8 p-0"
                               title="Editar"
                               onClick={() => handleEditar(eq)}
                             >
-                              <Pencil className="size-4 mr-1.5" />
-                              Editar
+                              <Pencil className="size-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-red-500 hover:text-red-500 hover:bg-red-50 h-8 px-2"
+                              className="text-green-600 hover:text-green-600 hover:bg-green-50 h-8 w-8 p-0"
+                              title="Histórico de Backups"
+                              onClick={() => abrirBackups(eq)}
+                            >
+                              <History className="size-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-500 hover:bg-red-50 h-8 w-8 p-0"
                               title="Excluir"
                               onClick={() => handleExcluir(eq.id)}
                             >
-                              <XCircle className="size-4 mr-1.5" />
-                              Excluir
+                              <XCircle className="size-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -501,6 +553,69 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
               </TabsContent>
             </Tabs>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Histórico de Backups */}
+      <Dialog open={modalBackups} onOpenChange={setModalBackups}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1a3a5c] flex items-center gap-2">
+              <History className="size-5 text-green-600" />
+              Histórico de Backups
+            </DialogTitle>
+            <DialogDescription>
+              {equipamentoSelecionado?.nome} - {equipamentoSelecionado?.patrimonio}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Último Status</p>
+                <p className="text-sm font-medium text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="size-4" />
+                  {backups.length > 0 ? (backups[0].status === "sucesso" ? "Protegido" : "Falha") : "Sem backups"}
+                </p>
+              </div>
+              <Button 
+                onClick={handleManualBackup} 
+                disabled={loadingBackup}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {loadingBackup ? "Executando..." : "Realizar Backup Agora"}
+              </Button>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+              {backups.length > 0 ? (
+                backups.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-green-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${b.status === "sucesso" ? "bg-green-100" : "bg-red-100"}`}>
+                        <Monitor className={`size-4 ${b.status === "sucesso" ? "text-green-600" : "text-red-600"}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[#1a3a5c]">
+                          {new Date(b.data).toLocaleString('pt-BR')}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Tamanho: {(b.tamanho / 1024).toFixed(2)} MB • {b.status}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Ver Log">
+                      <Eye className="size-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-sm text-muted-foreground">Nenhum histórico de backup encontrado.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

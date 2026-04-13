@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react"
 import {
   ClipboardList,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   Monitor,
   Users,
   Building2,
   Calendar,
+  Eye,
+  Paperclip,
+  History,
+  Download,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -20,14 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
 import { formatDateShort, formatDate } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Paperclip, History } from "lucide-react"
 
 const prioridadeConfig: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "bg-green-100 text-green-800 border-green-200" },
@@ -103,6 +103,18 @@ export function DashboardEmpresaPage() {
 
   const empresa = userData?.empresa
 
+  const [backupStats, setBackupStats] = useState({ total: 0, ultimo_data: null })
+
+  useEffect(() => {
+    if (userData?.empresa?.id) {
+      // Buscar estatísticas de backup
+      fetch(`/api/empresas/${userData.empresa.id}/backup-stats`)
+        .then(res => res.json())
+        .then(data => setBackupStats(data))
+        .catch(err => console.error("Erro ao buscar stats de backup:", err))
+    }
+  }, [userData])
+
   const displayStats = [
     {
       title: "Chamados Ativos",
@@ -129,12 +141,20 @@ export function DashboardEmpresaPage() {
       bgColor: "bg-[#1a3a5c]/10",
     },
     {
-      title: "Chamados no Mês",
-      value: dynamicStats?.total_chamados?.toString() || "0",
-      description: "Total de solicitações",
+      title: "Backups Realizados",
+      value: backupStats.total.toString(),
+      description: "Cópias de segurança",
+      icon: CheckCircle2,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+    },
+    {
+      title: "Último Backup",
+      value: backupStats.ultimo_data ? new Date(backupStats.ultimo_data).toLocaleDateString('pt-BR') : "Nenhum",
+      description: "Data da última execução",
       icon: Calendar,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10",
+      color: "text-primary",
+      bgColor: "bg-primary/10",
     },
   ]
 
@@ -176,14 +196,14 @@ export function DashboardEmpresaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 border-none shadow-md overflow-hidden bg-white">
-          <CardHeader className="bg-[#1a3a5c]/5 border-b pt-10 pb-8">
-            <div className="flex flex-col items-center justify-center text-center gap-4">
-              <div className="bg-[#7ac142]/10 p-2.5 rounded-full">
+          <CardHeader className="flex flex-row items-center justify-between border-b py-4 px-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#7ac142]/10 p-2 rounded-lg">
                 <ClipboardList className="size-5 text-[#7ac142]" />
               </div>
-              <div className="space-y-1">
-                <CardTitle className="text-xl font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
-                <CardDescription className="text-xs">Últimas solicitações abertas pela sua empresa</CardDescription>
+              <div>
+                <CardTitle className="text-lg font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
+                <CardDescription className="text-xs">Últimas solicitações da empresa</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -191,7 +211,6 @@ export function DashboardEmpresaPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">ID</TableHead>
                   <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Chamado</TableHead>
                   <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Solicitante</TableHead>
                   <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Prioridade</TableHead>
@@ -203,11 +222,6 @@ export function DashboardEmpresaPage() {
               <TableBody>
                 {recentTickets.map((ticket) => (
                   <TableRow key={ticket.id} className="hover:bg-gray-50/80 transition-colors group">
-                    <TableCell className="py-4">
-                      <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
-                        CH-{ticket.id.toString().padStart(3, '0')}
-                      </span>
-                    </TableCell>
                     <TableCell className="py-4">
                       <span className="text-sm font-medium text-gray-700 max-w-[150px] truncate block">
                         {ticket.titulo}
@@ -245,11 +259,11 @@ export function DashboardEmpresaPage() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 px-2"
+                        className="text-[#3ba5d8] hover:text-[#3ba5d8] hover:bg-[#3ba5d8]/10 h-8 w-8 p-0"
                         onClick={() => onViewTicket(ticket)}
+                        title="Ver Detalhes"
                       >
-                        <Eye className="size-4 mr-1.5" />
-                        Ver
+                        <Eye className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -290,14 +304,9 @@ export function DashboardEmpresaPage() {
                     <span className="font-bold text-[#7ac142]">4.8 / 5.0</span>
                 </div>
             </div>
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex gap-2 items-center text-yellow-800 mb-1">
-                    <AlertTriangle className="size-4" />
-                    <span className="text-xs font-bold uppercase">Manutenção Pendente</span>
-                </div>
-                <p className="text-xs text-yellow-800">
-                    O backup mensal agendado para hoje não foi detectado. Por favor, verifique os logs.
-                </p>
+            <div className="space-y-4">
+                {/* Cards de equipamentos com manutenção ou alertas seriam listados aqui */}
+                <p className="text-sm text-muted-foreground italic">Nenhum alerta crítico no momento.</p>
             </div>
           </CardContent>
         </Card>

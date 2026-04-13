@@ -1,5 +1,5 @@
-from database import SessionLocal, Empresa, Funcionario, Equipamento, Chamado, StatusChamado, Prioridade, init_db
-from datetime import datetime, timezone
+from database import SessionLocal, Empresa, Funcionario, Equipamento, Chamado, StatusChamado, Prioridade, BackupEquipamento, init_db
+from datetime import datetime, timezone, timedelta
 
 def seed():
     # Inicializar o banco de dados (criar tabelas se não existirem)
@@ -110,11 +110,14 @@ def seed():
         session.add_all([chamado1, chamado2])
         session.commit()
 
-        print("Dados de exemplo inseridos com sucesso!")
+        # 5. Criar Backups de Teste (Comentado para iniciar limpo)
+        # backup1 = BackupEquipamento(...)
+        # ...
         
+        print("Dados de teste inseridos com sucesso!")
     except Exception as e:
-        session.rollback()
         print(f"Erro ao inserir dados: {e}")
+        session.rollback()
     finally:
         session.close()
 
