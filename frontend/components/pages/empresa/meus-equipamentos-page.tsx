@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw, CheckCircle } from "lucide-react"
+import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw, CheckCircle, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 

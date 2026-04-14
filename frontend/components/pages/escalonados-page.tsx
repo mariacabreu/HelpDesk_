@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, RotateCcw, Eye, Clock, Loader2, RefreshCw, CheckCircle, Lock, MoreHorizontal, Shuffle, ArrowRight, AlertCircle } from "lucide-react"
+import { Search, RotateCcw, Eye, Clock, Loader2, RefreshCw, CheckCircle, Lock, MoreHorizontal, Shuffle, ArrowRight, AlertCircle, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDate } from "@/lib/utils"
 

@@ -117,7 +117,7 @@ export function AuditoriaPage() {
       startY: 35,
       head: [["Data/Hora", "Usuário", "Módulo", "Ação", "Descrição", "IP"]],
       body: tableData,
-      headStyles: { fillStyle: "bold", fillColor: [26, 58, 92] },
+      headStyles: { fontStyle: "bold", fillColor: [26, 58, 92] },
     })
 
     doc.save(`auditoria-helpdesk-${new Date().getTime()}.pdf`)
