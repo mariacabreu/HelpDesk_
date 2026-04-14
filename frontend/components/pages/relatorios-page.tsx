@@ -353,11 +353,11 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]/5">
-                    <TableHead className="font-semibold text-[#1a3a5c]">Nivel</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Chamados</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Escalonados</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Tempo Medio</TableHead>
+                  <TableRow className="bg-[#1a3a5c]">
+                    <TableHead className="text-center text-white font-semibold py-4">Nivel</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Escalonados</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Tempo Medio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -388,11 +388,11 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]/5">
-                    <TableHead className="font-semibold text-[#1a3a5c]">Tecnico</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Chamados Atendidos</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Chamados Resolvidos</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Tempo Medio</TableHead>
+                  <TableRow className="bg-[#1a3a5c]">
+                    <TableHead className="text-center text-white font-semibold py-4">Tecnico</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Chamados Atendidos</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Chamados Resolvidos</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Tempo Medio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -422,10 +422,10 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]/5">
-                    <TableHead className="font-semibold text-[#1a3a5c]">Equipamento</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Patrimonio</TableHead>
-                    <TableHead className="font-semibold text-[#1a3a5c]">Chamados</TableHead>
+                  <TableRow className="bg-[#1a3a5c]">
+                    <TableHead className="text-center text-white font-semibold py-4">Equipamento</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Patrimonio</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -468,11 +468,11 @@ export function RelatoriosPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#1a3a5c]/5">
-                <TableHead className="font-semibold text-[#1a3a5c]">Data/Hora</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Usuario</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">Acao</TableHead>
-                <TableHead className="font-semibold text-[#1a3a5c]">IP</TableHead>
+              <TableRow className="bg-[#1a3a5c]">
+                <TableHead className="text-center text-white font-semibold py-4">Data/Hora</TableHead>
+                <TableHead className="text-center text-white font-semibold py-4">Usuario</TableHead>
+                <TableHead className="text-center text-white font-semibold py-4">Acao</TableHead>
+                <TableHead className="text-center text-white font-semibold py-4">IP</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

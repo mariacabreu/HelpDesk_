@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw } from "lucide-react"
+import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 
@@ -380,14 +380,14 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="text-primary font-semibold border-border text-left">Equipamento</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Tipo</TableHead>
-                  <TableHead className="w-[130px] text-primary font-semibold border-border text-left">Patrimônio</TableHead>
-                  <TableHead className="w-[150px] text-primary font-semibold border-border text-left">Modelo</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold border-border text-left">Status</TableHead>
-                  <TableHead className="w-[80px] text-primary font-semibold border-border text-left">Chamados</TableHead>
-                  <TableHead className="w-[150px] text-primary font-semibold border-border text-left">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="text-center text-white font-semibold border-border py-4">Equipamento</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold border-border py-4">Tipo</TableHead>
+                  <TableHead className="w-[130px] text-center text-white font-semibold border-border py-4">Patrimônio</TableHead>
+                  <TableHead className="w-[150px] text-center text-white font-semibold border-border py-4">Modelo</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold border-border py-4">Status</TableHead>
+                  <TableHead className="w-[80px] text-center text-white font-semibold border-border py-4">Chamados</TableHead>
+                  <TableHead className="w-[150px] text-center text-white font-semibold border-border py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -574,7 +574,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
               <div>
                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Último Status</p>
                 <p className="text-sm font-medium text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="size-4" />
+                  <CheckCircle className="size-4" />
                   {backups.length > 0 ? (backups[0].status === "sucesso" ? "Protegido" : "Falha") : "Sem backups"}
                 </p>
               </div>

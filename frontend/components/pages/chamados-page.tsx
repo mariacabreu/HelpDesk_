@@ -330,15 +330,15 @@ export function ChamadosPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="w-[100px] text-center text-primary font-semibold">Nº Chamado</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Solicitante</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Equipamento</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Prioridade</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Status</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">SLA</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Data</TableHead>
-                  <TableHead className="text-center text-primary font-semibold">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Nº Chamado</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Solicitante</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Equipamento</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Prioridade</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Status</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">SLA</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Data</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

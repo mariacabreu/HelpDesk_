@@ -348,18 +348,18 @@ export function EquipamentosPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]/5">
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">N Patrimonio</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Empresa</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Tipo</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Marca / Modelo</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">N de Serie</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Localizacao</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Status</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Chamados</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">Ultima Manut.</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] border border-[#1a3a5c]/10">IP</TableHead>
-                  <TableHead className="font-semibold text-[#1a3a5c] text-right border border-[#1a3a5c]/10">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">N Patrimonio</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Empresa</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Tipo</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Marca / Modelo</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">N de Serie</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Localizacao</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Status</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Chamados</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Ultima Manut.</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">IP</TableHead>
+                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

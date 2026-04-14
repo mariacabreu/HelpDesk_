@@ -12,6 +12,8 @@ import {
   Database,
   Shield,
   LogOut,
+  History,
+  Settings,
 } from "lucide-react"
 
 import {

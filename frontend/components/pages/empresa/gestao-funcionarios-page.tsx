@@ -382,13 +382,13 @@ export function GestaoFuncionariosPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="text-primary font-semibold">Funcionário</TableHead>
-                  <TableHead className="w-[200px] text-primary font-semibold">E-mail</TableHead>
-                  <TableHead className="w-[180px] text-primary font-semibold">Departamento</TableHead>
-                  <TableHead className="w-[120px] text-primary font-semibold">Permissão</TableHead>
-                  <TableHead className="w-[100px] text-primary font-semibold">Status</TableHead>
-                  <TableHead className="w-[140px] text-right text-primary font-semibold">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="text-center text-white font-semibold py-4">Funcionário</TableHead>
+                  <TableHead className="w-[200px] text-center text-white font-semibold py-4">E-mail</TableHead>
+                  <TableHead className="w-[180px] text-center text-white font-semibold py-4">Departamento</TableHead>
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">Permissão</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Status</TableHead>
+                  <TableHead className="w-[140px] text-center text-white font-semibold py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

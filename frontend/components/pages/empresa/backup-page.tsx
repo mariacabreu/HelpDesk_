@@ -77,13 +77,12 @@ export function BackupPage() {
   }
 
   const iniciarBackup = async () => {
-    // Iniciar backup para o primeiro equipamento (exemplo) ou todos
     toast.info("Iniciando rotina de backup...")
     setExecutandoBackup(true)
     setProgressoBackup(10)
-    // ... rest of the logic
-  }
-          
+    setInterval(() => {
+      setProgressoBackup(prev => {
+        if (prev >= 100) {
           return 100
         }
         return prev + 10
@@ -273,14 +272,14 @@ export function BackupPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="w-[80px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">ID</TableHead>
-                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Data/Hora</TableHead>
-                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tipo</TableHead>
-                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Tamanho</TableHead>
-                  <TableHead className="w-[100px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Duração</TableHead>
-                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Status</TableHead>
-                  <TableHead className="w-[150px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="w-[80px] text-center text-white font-semibold py-4">ID</TableHead>
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">Data/Hora</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tipo</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tamanho</TableHead>
+                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Duração</TableHead>
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">Status</TableHead>
+                  <TableHead className="w-[150px] text-center text-white font-semibold py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

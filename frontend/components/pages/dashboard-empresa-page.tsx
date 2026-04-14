@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Monitor,
   Users,
-  Building2,
   Calendar,
   Eye,
   Paperclip,
@@ -194,7 +193,7 @@ export function DashboardEmpresaPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <Card className="lg:col-span-2 border-none shadow-md overflow-hidden bg-white">
           <CardHeader className="flex flex-row items-center justify-between border-b py-4 px-6">
             <div className="flex items-center gap-3">
@@ -210,13 +209,13 @@ export function DashboardEmpresaPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Chamado</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Solicitante</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Prioridade</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4">Data</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c] border-b-0">
+                  <TableHead className="text-center text-white font-semibold py-4">Chamado</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Solicitante</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Prioridade</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Status</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Data</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -270,44 +269,6 @@ export function DashboardEmpresaPage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[#1a3a5c]">Equipamentos</CardTitle>
-            <CardDescription>Resumo de infraestrutura</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border">
-                <Building2 className="size-8 text-[#7ac142]" />
-                <div>
-                    <p className="font-bold text-[#1a3a5c]">{empresa?.razao_social || "Tech Solutions Ltda"}</p>
-                    <p className="text-xs text-muted-foreground">CNPJ: {empresa?.cnpj || "12.345.678/0001-90"}</p>
-                </div>
-            </div>
-            <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Segmento</span>
-                    <span className="font-bold text-[#1a3a5c]">{empresa?.segmento || "N/A"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Cidade/UF</span>
-                    <span className="font-bold text-[#1a3a5c]">{empresa ? `${empresa.cidade}/${empresa.estado}` : "São Paulo/SP"}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">SLA Médio de Atendimento</span>
-                    <span className="font-bold text-[#1a3a5c]">4.2 horas</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Nível de Satisfação (CSAT)</span>
-                    <span className="font-bold text-[#7ac142]">4.8 / 5.0</span>
-                </div>
-            </div>
-            <div className="space-y-4">
-                {/* Cards de equipamentos com manutenção ou alertas seriam listados aqui */}
-                <p className="text-sm text-muted-foreground italic">Nenhum alerta crítico no momento.</p>
-            </div>
           </CardContent>
         </Card>
       </div>

@@ -16,7 +16,6 @@ import { NovoChamadoPage } from "@/components/pages/empresa/novo-chamado-page"
 import { MeusChamadosPage } from "@/components/pages/empresa/meus-chamados-page"
 import { MeusEquipamentosPage } from "@/components/pages/empresa/meus-equipamentos-page"
 import { GestaoFuncionariosPage } from "@/components/pages/empresa/gestao-funcionarios-page"
-import { LogsPage } from "@/components/pages/empresa/logs-page"
 import { BackupPage } from "@/components/pages/empresa/backup-page"
 import { AuditoriaPage } from "@/components/pages/empresa/auditoria-page"
 
@@ -61,8 +60,6 @@ export default function DashboardPage() {
         return <MeusEquipamentosPage onOpenTicket={() => setActiveTab("novo-chamado")} />
       case "gestao-funcionarios":
         return <GestaoFuncionariosPage />
-      case "logs":
-        return <LogsPage />
       case "backup":
         return <BackupPage />
       case "auditoria":

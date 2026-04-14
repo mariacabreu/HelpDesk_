@@ -262,14 +262,14 @@ export function EscalonadosPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="text-primary font-semibold w-[100px] text-center border-border">ID</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Solicitante</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Chamado</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Prioridade</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Status</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Data</TableHead>
-                  <TableHead className="text-primary font-semibold text-center border-border">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="text-white font-semibold w-[100px] text-center py-4">ID</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Solicitante</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Chamado</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Prioridade</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Status</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Data</TableHead>
+                  <TableHead className="text-white font-semibold text-center py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

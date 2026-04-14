@@ -146,13 +146,13 @@ export function DashboardSuportePage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">ID</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Solicitante</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Chamado</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Prioridade</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest text-center py-4">Data</TableHead>
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
+                  <TableHead className="text-center text-white font-semibold py-4">ID</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Solicitante</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Chamado</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Prioridade</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Status</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Data</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -34,6 +34,15 @@ const tipoConfig = {
   error: { label: "Erro", cor: "bg-red-100 text-red-800", icon: AlertCircle },
 }
 
+const acaoConfig = {
+  create: { label: "Criação", cor: "bg-green-100 text-green-800" },
+  update: { label: "Atualização", cor: "bg-blue-100 text-blue-800" },
+  delete: { label: "Exclusão", cor: "bg-red-100 text-red-800" },
+  login: { label: "Login", cor: "bg-purple-100 text-purple-800" },
+  logout: { label: "Logout", cor: "bg-gray-100 text-gray-800" },
+  view: { label: "Visualização", cor: "bg-cyan-100 text-cyan-800" },
+}
+
 export function AuditoriaPage() {
   const [userData, setUserData] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
@@ -274,13 +283,13 @@ export function AuditoriaPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="data-table-header">
-                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Data/Hora</TableHead>
-                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Módulo</TableHead>
-                  <TableHead className="w-[150px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Usuário</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ação</TableHead>
-                  <TableHead className="w-[120px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">IP</TableHead>
-                  <TableHead className="w-[80px] text-[10px] font-bold text-[#1a3a5c]/60 uppercase tracking-widest py-4 text-left">Ações</TableHead>
+                <TableRow className="bg-[#1a3a5c]">
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">Data/Hora</TableHead>
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">Módulo</TableHead>
+                  <TableHead className="w-[150px] text-center text-white font-semibold py-4">Usuário</TableHead>
+                  <TableHead className="text-center text-white font-semibold py-4">Ação</TableHead>
+                  <TableHead className="w-[120px] text-center text-white font-semibold py-4">IP</TableHead>
+                  <TableHead className="w-[80px] text-center text-white font-semibold py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

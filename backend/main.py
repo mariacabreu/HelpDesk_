@@ -20,6 +20,24 @@ load_dotenv()
 
 app = FastAPI()
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class LoginRequest(BaseModel):
+    login: str
+    password: str
+
+class RecoveryRequest(BaseModel):
+    email: str
+
+class VerifyCodeRequest(BaseModel):
+    email: str
+    code: str
+
 @app.post("/equipamentos/{equipamento_id}/backup")
 def perform_backup(equipamento_id: int, db: Session = Depends(get_db)):
     eq = db.query(Equipamento).filter(Equipamento.id == equipamento_id).first()
@@ -265,17 +283,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-class LoginRequest(BaseModel):
-    login: str
-    password: str
-
-class RecoveryRequest(BaseModel):
-    email: str
-
-class VerifyCodeRequest(BaseModel):
-    email: str
-    code: str
 
 class ResetPasswordRequest(BaseModel):
     email: str
