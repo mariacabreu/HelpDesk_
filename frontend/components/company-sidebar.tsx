@@ -59,6 +59,11 @@ const menuItems = [
 
 const adminItems = [
   {
+    title: "Backup",
+    icon: Database,
+    id: "backup",
+  },
+  {
     title: "Auditoria",
     icon: Shield,
     id: "auditoria",

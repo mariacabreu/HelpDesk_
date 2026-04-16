@@ -380,7 +380,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-center text-white font-semibold border-border py-4">Equipamento</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold border-border py-4">Tipo</TableHead>
                   <TableHead className="w-[130px] text-center text-white font-semibold border-border py-4">Patrimônio</TableHead>

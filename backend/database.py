@@ -50,6 +50,7 @@ class Empresa(Base):
     funcionarios = relationship("Funcionario", back_populates="empresa")
     equipamentos = relationship("Equipamento", back_populates="empresa")
     chamados = relationship("Chamado", back_populates="empresa")
+    backups_sistema = relationship("BackupSistema", back_populates="empresa", cascade="all, delete-orphan")
 
 class Funcionario(Base):
     __tablename__ = 'funcionarios'
@@ -107,6 +108,21 @@ class BackupEquipamento(Base):
     
     # Relacionamentos
     equipamento = relationship("Equipamento", back_populates="backups")
+
+class BackupSistema(Base):
+    __tablename__ = 'backups_sistema'
+    
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey('empresas.id'))
+    data_inicio = Column(DateTime, default=datetime.utcnow)
+    data_fim = Column(DateTime)
+    status = Column(String(20), default="sucesso") # sucesso, falha, em_progresso
+    tamanho_kb = Column(Integer)
+    tipo = Column(String(50), default="Completo") # Completo, Incremental
+    log = Column(Text)
+    
+    # Relacionamentos
+    empresa = relationship("Empresa", back_populates="backups_sistema")
 
 class Chamado(Base):
     __tablename__ = 'chamados'
@@ -202,9 +218,11 @@ class PasswordRecovery(Base):
     used = Column(Integer, default=0) # 0 = não usado, 1 = usado
 
 # Configuração do Banco de Dados
-DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
+# DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
+DATABASE_URL = "sqlite:///./helpdesk.db"
 engine = create_engine(
     DATABASE_URL,
+    connect_args={"check_same_thread": False}, # Necessário para SQLite
     pool_recycle=3600,
     pool_pre_ping=True
 )

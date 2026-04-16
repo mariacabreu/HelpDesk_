@@ -303,7 +303,7 @@ export function MeusChamadosPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-center text-white font-semibold py-4">Título</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tipo</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold py-4">Prioridade</TableHead>

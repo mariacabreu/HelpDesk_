@@ -17,9 +17,9 @@ import {
 } from "lucide-react"
 
 const statusConfig = {
-  concluido: { label: "Concluído", cor: "bg-green-100 text-green-800", icon: CheckCircle },
-  erro: { label: "Erro", cor: "bg-red-100 text-red-800", icon: AlertCircle },
-  em_andamento: { label: "Em Andamento", cor: "bg-blue-100 text-blue-800", icon: RefreshCw },
+  sucesso: { label: "Concluído", cor: "bg-green-100 text-green-800", icon: CheckCircle },
+  falha: { label: "Erro", cor: "bg-red-100 text-red-800", icon: AlertCircle },
+  em_progresso: { label: "Em Andamento", cor: "bg-blue-100 text-blue-800", icon: RefreshCw },
 }
 
 export function BackupPage() {
@@ -49,25 +49,10 @@ export function BackupPage() {
   const fetchBackups = async (empresaId: number) => {
     setLoading(true)
     try {
-      // Buscar todos os equipamentos da empresa primeiro
-      const eqRes = await fetch(`/api/equipamentos/${empresaId}`)
-      if (eqRes.ok) {
-        const equipamentos = await eqRes.json()
-        const allBackups: any[] = []
-        
-        for (const eq of equipamentos) {
-          const bkpRes = await fetch(`/api/equipamentos/${eq.id}/backups`)
-          if (bkpRes.ok) {
-            const data = await bkpRes.json()
-            allBackups.push(...data.map((b: any) => ({
-              ...b,
-              equipamento_nome: eq.nome,
-              equipamento_patrimonio: eq.patrimonio
-            })))
-          }
-        }
-        
-        setBackups(allBackups.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()))
+      const bkpRes = await fetch(`/api/empresas/${empresaId}/backups`)
+      if (bkpRes.ok) {
+        const data = await bkpRes.json()
+        setBackups(data.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()))
       }
     } catch (err) {
       console.error("Erro ao buscar backups:", err)
@@ -77,25 +62,62 @@ export function BackupPage() {
   }
 
   const iniciarBackup = async () => {
-    toast.info("Iniciando rotina de backup...")
+    console.log("DEBUG: Iniciar backup. UserData:", userData)
+    if (!userData?.empresa?.id) {
+      console.error("DEBUG: empresa_id não encontrado em userData")
+      return
+    }
+
+    toast.info("Iniciando backup completo do sistema...")
     setExecutandoBackup(true)
     setProgressoBackup(10)
-    setInterval(() => {
-      setProgressoBackup(prev => {
-        if (prev >= 100) {
-          return 100
-        }
-        return prev + 10
+
+    try {
+      // Simular progresso visual enquanto aguarda o backend
+      const timer = setInterval(() => {
+        setProgressoBackup(prev => (prev < 90 ? prev + 10 : prev))
+      }, 500)
+
+      const bkpRes = await fetch(`/api/empresas/${userData.empresa.id}/backup`, { 
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({})
       })
-    }, 500)
+      
+      clearInterval(timer)
+      setProgressoBackup(100)
+
+      if (bkpRes.ok) {
+        toast.success("Backup do sistema concluído com sucesso!")
+        fetchBackups(userData.empresa.id)
+      } else {
+        throw new Error("Erro no servidor")
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Erro ao realizar backup do sistema")
+    } finally {
+      setTimeout(() => {
+        setExecutandoBackup(false)
+        setProgressoBackup(0)
+      }, 1000)
+    }
   }
 
   const salvarConfiguracoes = () => {
     toast.success("Configurações de backup salvas com sucesso!")
   }
 
-  const totalBackups = backups.filter(b => b.status === "concluido").length
-  const ultimoBackup = backups.find(b => b.status === "concluido")
+  const totalBackups = backups.filter(b => b.status === "sucesso").length
+  const ultimoBackup = backups.find(b => b.status === "sucesso")
+
+  const formatSize = (kb: number | undefined) => {
+    if (kb === undefined) return ""
+    if (kb < 1024) return `${kb} KB`
+    return `${(kb / 1024).toFixed(2)} MB`
+  }
 
   return (
     <div className="space-y-6">
@@ -163,8 +185,8 @@ export function BackupPage() {
                 <Calendar className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-bold text-primary">{formatDateShort(ultimoBackup?.data)}</p>
-                <p className="text-xs text-muted-foreground">Último Backup</p>
+                <p className="text-sm font-bold text-primary">{ultimoBackup ? formatDateShort(ultimoBackup.data) : "N/A"}</p>
+                <p className="text-xs text-muted-foreground">Data do Último Backup</p>
               </div>
             </div>
           </CardContent>
@@ -176,7 +198,7 @@ export function BackupPage() {
                 <HardDrive className="size-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">{ultimoBackup?.tamanho}</p>
+                <p className="text-2xl font-bold text-primary">{formatSize(ultimoBackup?.tamanho)}</p>
                 <p className="text-xs text-muted-foreground">Tamanho do Backup</p>
               </div>
             </div>
@@ -272,7 +294,7 @@ export function BackupPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="w-[80px] text-center text-white font-semibold py-4">ID</TableHead>
                   <TableHead className="w-[120px] text-center text-white font-semibold py-4">Data/Hora</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tipo</TableHead>
@@ -306,9 +328,9 @@ export function BackupPage() {
                             <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(backup.data).split(' ')[1]}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize text-left text-sm text-gray-600">{backup.tipo}</TableCell>
-                        <TableCell className="text-left text-sm font-medium text-gray-700">{backup.tamanho}</TableCell>
-                        <TableCell className="text-left text-sm text-gray-500">{backup.duracao}</TableCell>
+                        <TableCell className="capitalize text-left text-sm text-gray-600">{backup.tipo || "Manual"}</TableCell>
+                        <TableCell className="text-left text-sm font-medium text-gray-700">{formatSize(backup.tamanho)}</TableCell>
+                        <TableCell className="text-left text-sm text-gray-500">{backup.duracao || "N/A"}</TableCell>
                         <TableCell className="text-left">
                           <Badge className={`${config.cor} rounded-full px-3 text-[10px] shadow-none border-none`}>
                             <IconStatus className="size-3 mr-1" />
@@ -317,7 +339,7 @@ export function BackupPage() {
                         </TableCell>
                         <TableCell className="py-4 text-left">
                           <div className="flex justify-start gap-2">
-                            {backup.status === "concluido" && (
+                            {backup.status === "sucesso" && (
                               <>
                                 <Button 
                                   variant="ghost" 

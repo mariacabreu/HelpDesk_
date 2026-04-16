@@ -348,7 +348,7 @@ export function EquipamentosPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">N Patrimonio</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Empresa</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Tipo</TableHead>

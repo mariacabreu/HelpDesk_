@@ -382,7 +382,7 @@ export function GestaoFuncionariosPage() {
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-center text-white font-semibold py-4">Funcionário</TableHead>
                   <TableHead className="w-[200px] text-center text-white font-semibold py-4">E-mail</TableHead>
                   <TableHead className="w-[180px] text-center text-white font-semibold py-4">Departamento</TableHead>

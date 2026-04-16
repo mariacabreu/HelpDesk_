@@ -262,7 +262,7 @@ export function EscalonadosPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#1a3a5c]">
+                <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-white font-semibold w-[100px] text-center py-4">ID</TableHead>
                   <TableHead className="text-white font-semibold text-center py-4">Solicitante</TableHead>
                   <TableHead className="text-white font-semibold text-center py-4">Chamado</TableHead>

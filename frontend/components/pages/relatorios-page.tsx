@@ -353,7 +353,7 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]">
+                  <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                     <TableHead className="text-center text-white font-semibold py-4">Nivel</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Escalonados</TableHead>
@@ -388,7 +388,7 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]">
+                  <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                     <TableHead className="text-center text-white font-semibold py-4">Tecnico</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados Atendidos</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados Resolvidos</TableHead>
@@ -422,7 +422,7 @@ export function RelatoriosPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#1a3a5c]">
+                  <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                     <TableHead className="text-center text-white font-semibold py-4">Equipamento</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Patrimonio</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
@@ -468,7 +468,7 @@ export function RelatoriosPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#1a3a5c]">
+              <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                 <TableHead className="text-center text-white font-semibold py-4">Data/Hora</TableHead>
                 <TableHead className="text-center text-white font-semibold py-4">Usuario</TableHead>
                 <TableHead className="text-center text-white font-semibold py-4">Acao</TableHead>

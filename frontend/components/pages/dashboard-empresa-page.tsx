@@ -106,8 +106,8 @@ export function DashboardEmpresaPage() {
 
   useEffect(() => {
     if (userData?.empresa?.id) {
-      // Buscar estatísticas de backup
-      fetch(`/api/empresas/${userData.empresa.id}/backup-stats`)
+      // Buscar estatísticas de backup do sistema completo
+      fetch(`/api/empresas/${userData.empresa.id}/system-backup-stats`)
         .then(res => res.json())
         .then(data => setBackupStats(data))
         .catch(err => console.error("Erro ao buscar stats de backup:", err))
@@ -149,7 +149,7 @@ export function DashboardEmpresaPage() {
     },
     {
       title: "Último Backup",
-      value: backupStats.ultimo_data ? new Date(backupStats.ultimo_data).toLocaleDateString('pt-BR') : "Nenhum",
+      value: backupStats.ultimo_data ? formatDateShort(backupStats.ultimo_data) : "Nenhum",
       description: "Data da última execução",
       icon: Calendar,
       color: "text-primary",

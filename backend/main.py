@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema
 from datetime import datetime, timedelta
 import shutil
 import random
@@ -90,6 +90,62 @@ def get_backup_stats(empresa_id: int, db: Session = Depends(get_db)):
     return {
         "total": total_backups,
         "ultimo_data": ultimo_backup.data_inicio if ultimo_backup else None
+    }
+
+@app.post("/empresas/{empresa_id}/backup")
+def perform_system_backup(empresa_id: int, db: Session = Depends(get_db)):
+    try:
+        print(f"DEBUG: Iniciando backup para empresa {empresa_id}")
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+        if not empresa:
+            raise HTTPException(status_code=404, detail="Empresa não encontrada")
+        
+        # Simular backup de "Tudo no sistema" (Chamados, Funcionários, Equipamentos, Logs)
+        backup = BackupSistema(
+            empresa_id=empresa_id,
+            data_inicio=datetime.utcnow(),
+            status="em_progresso",
+            tipo="Completo",
+            tamanho_kb=random.randint(5000, 250000)
+        )
+        db.add(backup)
+        db.commit()
+        
+        # Simulando conclusão
+        backup.status = "sucesso"
+        backup.data_fim = datetime.utcnow()
+        backup.log = f"Backup completo do sistema realizado para {empresa.nome_fantasia}."
+        
+        db.commit()
+        return {"id": backup.id, "status": "sucesso", "data": backup.data_fim, "tamanho": backup.tamanho_kb}
+    except Exception as e:
+        print(f"ERRO NO BACKUP: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/empresas/{empresa_id}/backups")
+def get_system_backups(empresa_id: int, db: Session = Depends(get_db)):
+    backups = db.query(BackupSistema).filter(BackupSistema.empresa_id == empresa_id).order_by(BackupSistema.data_inicio.desc()).all()
+    return [
+        {
+            "id": b.id,
+            "data": b.data_inicio,
+            "status": b.status,
+            "tamanho": b.tamanho_kb,
+            "tipo": b.tipo,
+            "log": b.log
+        } for b in backups
+    ]
+
+@app.get("/empresas/{empresa_id}/system-backup-stats")
+def get_system_backup_stats(empresa_id: int, db: Session = Depends(get_db)):
+    total = db.query(BackupSistema).filter(BackupSistema.empresa_id == empresa_id, BackupSistema.status == "sucesso").count()
+    ultimo = db.query(BackupSistema).filter(BackupSistema.empresa_id == empresa_id, BackupSistema.status == "sucesso").order_by(BackupSistema.data_inicio.desc()).first()
+    
+    return {
+        "total": total,
+        "ultimo_data": ultimo.data_inicio if ultimo else None,
+        "ultimo_tamanho": ultimo.tamanho_kb if ultimo else 0
     }
 
 def generate_unique_login(db: Session):
@@ -275,14 +331,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Dependência para obter a sessão do banco de dados
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 class ResetPasswordRequest(BaseModel):
     email: str
