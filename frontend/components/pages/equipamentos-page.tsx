@@ -29,8 +29,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Search, RotateCcw, Info, Plus, Eye } from "lucide-react"
+import { Search, RotateCcw, Info, Plus, Eye, Monitor, Smartphone, Server, Printer, Router } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { safeJson } from "@/lib/utils"
 
 // Dados mock de equipamentos
 const equipamentosMock = [
@@ -99,10 +100,8 @@ const equipamentosMock = [
     marca: "Lenovo",
     modelo: "ThinkPad T14",
     numSerie: "SN321654987",
-    localizacao: "Diretoria",
     status: "ativo",
     chamadosVinculados: 2,
-    ultimaManutencao: "2023-12-20",
     ip: "192.168.1.78",
     so: "Windows 11 Pro",
     mac: "00:1D:2E:3F:40:51",
@@ -118,10 +117,8 @@ const equipamentosMock = [
     marca: "Cisco",
     modelo: "ISR 4321",
     numSerie: "SN654987321",
-    localizacao: "Setor Emergencia - Sala de Rede",
     status: "inativo",
     chamadosVinculados: 8,
-    ultimaManutencao: "2024-01-14",
     ip: "10.10.0.1",
     so: "Cisco IOS XE",
     mac: "00:1E:2F:30:41:52",
@@ -143,13 +140,20 @@ const statusLabels: Record<string, string> = {
   manutencao: "Em Manutencao",
 }
 
+const tipoIcones: Record<string, any> = {
+  notebook: Monitor,
+  desktop: Monitor,
+  servidor: Server,
+  impressora: Printer,
+  roteador: Router,
+  smartphone: Smartphone,
+}
+
 export function EquipamentosPage() {
   const [filtros, setFiltros] = useState({
     patrimonio: "",
-    empresa: "",
     tipo: "",
     marca: "",
-    localizacao: "",
   })
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<typeof equipamentosMock[0] | null>(null)
   const [userData, setUserData] = useState<any>(null)
@@ -173,34 +177,30 @@ export function EquipamentosPage() {
       setUserData(u)
       if (u?.empresa?.id) {
         fetch(`/api/equipamentos/${u.empresa.id}`)
-          .then(r => r.json())
-          .then(data => setEquipamentos(data))
+          .then(r => safeJson<any[]>(r))
+          .then(data => setEquipamentos(data || []))
           .catch(() => setEquipamentos([]))
       }
     }
   }, [])
 
-  const lista = (equipamentos?.length ?? 0) > 0
-    ? equipamentos.map((e: any) => ({
-        id: e.id?.toString(),
-        patrimonio: e.patrimonio,
-        empresa: userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "",
-        tipo: e.tipo || "",
-        marca: e.marca || "",
-        modelo: e.modelo || "",
-        numSerie: e.numero_serie || "",
-        localizacao: "",
-        status: e.status || "ativo",
-        chamadosVinculados: 0,
-        ultimaManutencao: "",
-        ip: "",
-        so: "",
-        mac: "",
-        dataAquisicao: "",
-        garantiaInicio: "",
-        garantiaFim: "",
-      }))
-    : equipamentosMock
+  const lista = equipamentos.map((e: any) => ({
+    id: e.id?.toString(),
+    patrimonio: e.patrimonio,
+    empresa: userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "",
+    tipo: e.tipo || "",
+    marca: e.marca || "",
+    modelo: e.modelo || "",
+    numSerie: e.numero_serie || "",
+    status: e.status || "ativo",
+    chamadosVinculados: 0,
+    ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+    so: e.especificacoes?.so || "",
+    mac: "",
+    dataAquisicao: "",
+    garantiaInicio: "",
+    garantiaFim: "",
+  }))
 
   const cadastrarEquipamento = async () => {
     if (!userData?.empresa?.id) {
@@ -228,17 +228,19 @@ export function EquipamentosPage() {
         }),
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error(err?.detail || "Falha ao cadastrar equipamento")
+        const err = await safeJson<any>(res)
+        throw new Error(err?.detail || `Falha ao cadastrar equipamento (${res.status})`)
       }
-      const novo = await res.json()
+      const novo = await safeJson<any>(res)
+      if (!novo) throw new Error("Resposta inválida ao cadastrar equipamento")
+      
       setOpenNovo(false)
       setForm({ nome: "", patrimonio: "", tipo: "", marca: "", modelo: "", numero_serie: "" })
       toast({ title: "Equipamento cadastrado", description: `Patrimônio ${novo.patrimonio}` })
       // Recarregar lista
       const r = await fetch(`/api/equipamentos/${userData.empresa.id}`)
-      const data = await r.json()
-      setEquipamentos(data)
+      const data = await safeJson<any[]>(r)
+      setEquipamentos(data || [])
     } catch (e: any) {
       toast({ title: "Erro", description: e.message || "Erro ao cadastrar equipamento.", variant: "destructive" as any })
     } finally {
@@ -249,10 +251,8 @@ export function EquipamentosPage() {
   const limparFiltros = () => {
     setFiltros({
       patrimonio: "",
-      empresa: "",
       tipo: "",
       marca: "",
-      localizacao: "",
     })
   }
 
@@ -271,24 +271,14 @@ export function EquipamentosPage() {
           <CardTitle className="text-lg">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="patrimonio">N Patrimonio</Label>
               <Input
                 id="patrimonio"
-                placeholder="PAT-001"
+                placeholder="Ex: PAT-001"
                 value={filtros.patrimonio}
                 onChange={(e) => setFiltros({ ...filtros, patrimonio: e.target.value })}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="empresa">Empresa</Label>
-              <Input
-                id="empresa"
-                placeholder="Nome da empresa"
-                value={filtros.empresa}
-                onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
               />
             </div>
 
@@ -318,16 +308,6 @@ export function EquipamentosPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="localizacao">Localizacao</Label>
-              <Input
-                id="localizacao"
-                placeholder="Sala, Rack..."
-                value={filtros.localizacao}
-                onChange={(e) => setFiltros({ ...filtros, localizacao: e.target.value })}
-              />
-            </div>
-
             <div className="flex items-end gap-4">
               <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2] gap-2">
                 <Search className="size-4" />
@@ -350,119 +330,105 @@ export function EquipamentosPage() {
               <TableHeader>
                 <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">N Patrimonio</TableHead>
-                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Empresa</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Tipo</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Marca / Modelo</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">N de Serie</TableHead>
-                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Localizacao</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Status</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Chamados</TableHead>
-                  <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Ultima Manut.</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">IP</TableHead>
                   <TableHead className="text-center text-white font-semibold border border-[#1a3a5c]/10 py-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lista.map((equipamento) => (
-                  <TableRow key={equipamento.id} className="hover:bg-[#3ba5d8]/5">
-                    <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">{equipamento.patrimonio}</TableCell>
-                    <TableCell className="border border-[#1a3a5c]/10">{equipamento.empresa}</TableCell>
-                    <TableCell className="border border-[#1a3a5c]/10">{equipamento.tipo}</TableCell>
-                    <TableCell className="border border-[#1a3a5c]/10">
-                      <div className="flex flex-col">
-                        <span className="text-sm">{equipamento.marca}</span>
-                        <span className="text-xs text-muted-foreground">{equipamento.modelo}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.numSerie}</TableCell>
-                    <TableCell className="text-sm border border-[#1a3a5c]/10">{equipamento.localizacao}</TableCell>
-                    <TableCell className="border border-[#1a3a5c]/10">
-                      <Badge variant="outline" className={statusColors[equipamento.status]}>
-                        {statusLabels[equipamento.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center border border-[#1a3a5c]/10">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {equipamento.chamadosVinculados}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm border border-[#1a3a5c]/10">{equipamento.ultimaManutencao}</TableCell>
-                    <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.ip}</TableCell>
-                    <TableCell className="text-right border border-[#1a3a5c]/10">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setEquipamentoSelecionado(equipamento)}
-                            className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
-                            title="Visualizar Descrição"
-                          >
-                            <Eye className="size-4 text-[#3ba5d8]" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle className="text-[#1a3a5c]">
-                              Detalhes do Equipamento - {equipamento.patrimonio}
-                            </DialogTitle>
-                            <DialogDescription>Informacoes completas do equipamento</DialogDescription>
-                          </DialogHeader>
-                          <div className="grid grid-cols-2 gap-4 py-4">
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Empresa</Label>
-                              <p className="font-medium">{equipamento.empresa}</p>
+                {lista.map((equipamento) => {
+                  const Icon = tipoIcones[equipamento.tipo.toLowerCase()] || Monitor
+                  return (
+                    <TableRow key={equipamento.id} className="hover:bg-[#3ba5d8]/5">
+                      <TableCell className="font-medium text-[#1a3a5c] border border-[#1a3a5c]/10">{equipamento.patrimonio}</TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <div className="flex items-center gap-2">
+                          <Icon className="size-4 text-muted-foreground" />
+                          <span className="capitalize">{equipamento.tipo}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <div className="flex flex-col">
+                          <span className="text-sm">{equipamento.marca}</span>
+                          <span className="text-xs text-muted-foreground">{equipamento.modelo}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.numSerie}</TableCell>
+                      <TableCell className="border border-[#1a3a5c]/10">
+                        <Badge variant="outline" className={statusColors[equipamento.status]}>
+                          {statusLabels[equipamento.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center border border-[#1a3a5c]/10">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {equipamento.chamadosVinculados}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono border border-[#1a3a5c]/10">{equipamento.ip}</TableCell>
+                      <TableCell className="text-right border border-[#1a3a5c]/10">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setEquipamentoSelecionado(equipamento)}
+                              className="size-8 bg-white border-gray-200 shadow-sm hover:bg-blue-50 hover:border-[#3ba5d8]/50 transition-all hover:scale-110"
+                              title="Visualizar Detalhes"
+                            >
+                              <Eye className="size-4 text-[#3ba5d8]" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle className="text-[#1a3a5c]">
+                                Detalhes do Equipamento - {equipamento.patrimonio}
+                              </DialogTitle>
+                              <DialogDescription>Informacoes completas do equipamento</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid grid-cols-2 gap-4 py-4">
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Empresa</Label>
+                                <p className="font-medium">{equipamento.empresa}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Tipo</Label>
+                                <p className="font-medium">{equipamento.tipo}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Marca</Label>
+                                <p className="font-medium">{equipamento.marca}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Modelo</Label>
+                                <p className="font-medium">{equipamento.modelo}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">N de Serie</Label>
+                                <p className="font-medium font-mono">{equipamento.numSerie}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Patrimonio</Label>
+                                <p className="font-medium">{equipamento.patrimonio}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">Sistema Operacional</Label>
+                                <p className="font-medium">{equipamentoSelecionado?.so || "Não definido"}</p>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Label className="text-muted-foreground text-xs">IP</Label>
+                                <p className="font-medium font-mono">{equipamento.ip}</p>
+                              </div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Tipo</Label>
-                              <p className="font-medium">{equipamento.tipo}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Marca</Label>
-                              <p className="font-medium">{equipamento.marca}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Modelo</Label>
-                              <p className="font-medium">{equipamento.modelo}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">N de Serie</Label>
-                              <p className="font-medium font-mono">{equipamento.numSerie}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Patrimonio</Label>
-                              <p className="font-medium">{equipamento.patrimonio}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Sistema Operacional</Label>
-                              <p className="font-medium">{equipamento.so}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Endereco MAC</Label>
-                              <p className="font-medium font-mono">{equipamento.mac}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">IP</Label>
-                              <p className="font-medium font-mono">{equipamento.ip}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Localizacao Fisica</Label>
-                              <p className="font-medium">{equipamento.localizacao}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Data de Aquisicao</Label>
-                              <p className="font-medium">{equipamento.dataAquisicao}</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Label className="text-muted-foreground text-xs">Garantia (Inicio / Fim)</Label>
-                              <p className="font-medium">{equipamento.garantiaInicio} ate {equipamento.garantiaFim}</p>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

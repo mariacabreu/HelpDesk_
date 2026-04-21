@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff } from "lucide-react"
+import { safeJson } from "@/lib/utils"
 
 interface LoginFormProps {
   onForgotPassword: () => void
@@ -37,11 +38,14 @@ export function LoginForm({ onForgotPassword, onRegisterCompany, onRegisterEmplo
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || "Erro ao fazer login")
+        const errorData = await safeJson<any>(response)
+        throw new Error(errorData?.detail || `Erro no servidor (${response.status})`)
       }
       
-      const userData = await response.json()
+      const userData = await safeJson<any>(response)
+      if (!userData) {
+        throw new Error("Resposta inválida do servidor")
+      }
       
       // Armazenar dados do usuário no localStorage para persistência simples
       localStorage.setItem("user", JSON.stringify(userData))

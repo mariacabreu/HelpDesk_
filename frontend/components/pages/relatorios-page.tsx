@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { safeJson } from "@/lib/utils"
 import { 
   FileText, 
   Clock, 
@@ -26,63 +27,50 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Loader2
 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
 export function RelatoriosPage() {
   const [periodo, setPeriodo] = useState({ inicio: "", fim: "" })
+  const [userData, setUserData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<any>(null)
+  const [logsAuditoria, setLogsAuditoria] = useState<any[]>([])
 
-  // Dados mock para relatórios
-  const estatisticasChamados = {
-    total: 156,
-    abertos: 23,
-    emAndamento: 45,
-    resolvidos: 88,
-    porPrioridade: {
-      baixa: 42,
-      media: 58,
-      alta: 36,
-      critica: 20,
+  const fetchStats = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/stats/relatorios")
+      if (res.ok) {
+        const data = await safeJson<any>(res)
+        setStats(data)
+      }
+      
+      const resLogs = await fetch("/api/logs")
+      if (resLogs.ok) {
+        const dataLogs = await safeJson<any[]>(resLogs)
+        setLogsAuditoria(dataLogs || [])
+      }
+    } catch (err) {
+      console.error("Erro ao buscar estatísticas:", err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const estatisticasSLA = {
-    dentroSLA: 134,
-    foraSLA: 22,
-    tempoMedio: "2h 34min",
-  }
-
-  const estatisticasNiveis = [
-    { nivel: "N1", chamados: 89, escalonados: 23, tempoMedio: "45min" },
-    { nivel: "N2", chamados: 45, escalonados: 12, tempoMedio: "1h 30min" },
-    { nivel: "N3", chamados: 22, escalonados: 0, tempoMedio: "3h 15min" },
-  ]
-
-  const estatisticasTecnicos = [
-    { nome: "Joao Silva", atendidos: 45, resolvidos: 42, tempoMedio: "1h 15min" },
-    { nome: "Maria Santos", atendidos: 38, resolvidos: 35, tempoMedio: "1h 30min" },
-    { nome: "Pedro Costa", atendidos: 32, resolvidos: 28, tempoMedio: "2h 00min" },
-    { nome: "Ana Oliveira", atendidos: 28, resolvidos: 26, tempoMedio: "1h 45min" },
-  ]
-
-  const equipamentosProblematicos = [
-    { equipamento: "Servidor HP ProLiant", patrimonio: "PAT-002", chamados: 12 },
-    { equipamento: "Impressora Epson L3150", patrimonio: "PAT-003", chamados: 8 },
-    { equipamento: "Roteador Cisco ISR", patrimonio: "PAT-005", chamados: 6 },
-    { equipamento: "Desktop Dell Optiplex", patrimonio: "PAT-001", chamados: 5 },
-  ]
-
-  const logsAuditoria = [
-    { data: "2024-01-15 14:30", usuario: "admin", acao: "Login no sistema", ip: "192.168.1.100" },
-    { data: "2024-01-15 14:25", usuario: "joao.silva", acao: "Edicao de chamado CHM-001", ip: "192.168.1.45" },
-    { data: "2024-01-15 14:20", usuario: "maria.santos", acao: "Exclusao de equipamento PAT-010", ip: "192.168.1.78" },
-    { data: "2024-01-15 14:15", usuario: "admin", acao: "Cadastro de novo funcionario", ip: "192.168.1.100" },
-    { data: "2024-01-15 14:00", usuario: "pedro.costa", acao: "Login no sistema", ip: "192.168.1.55" },
-  ]
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      setUserData(JSON.parse(storedUser))
+    }
+    fetchStats()
+  }, [])
 
   const exportarRelatorioGeral = () => {
+    if (!stats) return
     const doc = new jsPDF()
     let y = 15
 
@@ -103,10 +91,10 @@ export function RelatoriosPage() {
       startY: y,
       head: [["Status", "Quantidade"]],
       body: [
-        ["Total", estatisticasChamados.total.toString()],
-        ["Abertos", estatisticasChamados.abertos.toString()],
-        ["Em Andamento", estatisticasChamados.emAndamento.toString()],
-        ["Resolvidos", estatisticasChamados.resolvidos.toString()]
+        ["Total", stats.resumo.total.toString()],
+        ["Abertos", stats.resumo.abertos.toString()],
+        ["Em Andamento", stats.resumo.emAndamento.toString()],
+        ["Resolvidos", stats.resumo.resolvidos.toString()]
       ],
       headStyles: { fillColor: [26, 58, 92] }
     })
@@ -120,10 +108,9 @@ export function RelatoriosPage() {
       startY: y,
       head: [["Prioridade", "Quantidade"]],
       body: [
-        ["Baixa", estatisticasChamados.porPrioridade.baixa.toString()],
-        ["Média", estatisticasChamados.porPrioridade.media.toString()],
-        ["Alta", estatisticasChamados.porPrioridade.alta.toString()],
-        ["Crítica", estatisticasChamados.porPrioridade.critica.toString()]
+        ["Baixa", stats.prioridades.baixa.toString()],
+        ["Média", stats.prioridades.media.toString()],
+        ["Alta", stats.prioridades.alta.toString()]
       ],
       headStyles: { fillColor: [26, 58, 92] }
     })
@@ -137,9 +124,9 @@ export function RelatoriosPage() {
       startY: y,
       head: [["Métrica", "Valor"]],
       body: [
-        ["Dentro do SLA", estatisticasSLA.dentroSLA.toString()],
-        ["Fora do SLA", estatisticasSLA.foraSLA.toString()],
-        ["Tempo Médio de Atendimento", estatisticasSLA.tempoMedio]
+        ["Dentro do SLA", stats.sla.dentroSLA.toString()],
+        ["Fora do SLA", stats.sla.foraSLA.toString()],
+        ["Tempo Médio de Atendimento", stats.sla.tempoMedio]
       ],
       headStyles: { fillColor: [26, 58, 92] }
     })
@@ -155,10 +142,10 @@ export function RelatoriosPage() {
     doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22)
 
     const tableData = logsAuditoria.map(log => [
-      log.data,
-      log.usuario,
+      formatDate(log.timestamp),
+      log.usuario_nome || "Sistema",
       log.acao,
-      log.ip
+      log.ip || "N/A"
     ])
 
     autoTable(doc, {
@@ -171,12 +158,20 @@ export function RelatoriosPage() {
     doc.save(`logs-auditoria-${new Date().getTime()}.pdf`)
   }
 
+  if (loading || !stats) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a3a5c]">Relatorios</h1>
-          <p className="text-muted-foreground">Visualize metricas e estatisticas do sistema</p>
+          <h1 className="text-2xl font-bold text-[#1a3a5c]">Relatórios</h1>
+          <p className="text-muted-foreground">Visualize métricas e estatísticas do sistema</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={exportarRelatorioGeral}>
@@ -193,7 +188,7 @@ export function RelatoriosPage() {
       {/* Filtro de Período */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Filtro de Periodo</CardTitle>
+          <CardTitle className="text-lg">Filtro de Período</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
@@ -215,7 +210,7 @@ export function RelatoriosPage() {
                 onChange={(e) => setPeriodo({ ...periodo, fim: e.target.value })}
               />
             </div>
-            <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2]">Aplicar Filtro</Button>
+            <Button className="bg-[#3ba5d8] hover:bg-[#2a8fc2]" onClick={fetchStats}>Aplicar Filtro</Button>
           </div>
         </CardContent>
       </Card>
@@ -233,11 +228,11 @@ export function RelatoriosPage() {
           </TabsTrigger>
           <TabsTrigger value="niveis" className="gap-2">
             <RefreshCw className="size-4" />
-            Niveis
+            Níveis
           </TabsTrigger>
           <TabsTrigger value="tecnicos" className="gap-2">
             <User className="size-4" />
-            Tecnicos
+            Técnicos
           </TabsTrigger>
           <TabsTrigger value="equipamentos" className="gap-2">
             <Monitor className="size-4" />
@@ -251,25 +246,25 @@ export function RelatoriosPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Total de Chamados</CardDescription>
-                <CardTitle className="text-3xl text-[#1a3a5c]">{estatisticasChamados.total}</CardTitle>
+                <CardTitle className="text-3xl text-[#1a3a5c]">{stats.resumo.total}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Abertos</CardDescription>
-                <CardTitle className="text-3xl text-blue-600">{estatisticasChamados.abertos}</CardTitle>
+                <CardTitle className="text-3xl text-blue-600">{stats.resumo.abertos}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Em Andamento</CardDescription>
-                <CardTitle className="text-3xl text-amber-600">{estatisticasChamados.emAndamento}</CardTitle>
+                <CardTitle className="text-3xl text-amber-600">{stats.resumo.emAndamento}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Resolvidos</CardDescription>
-                <CardTitle className="text-3xl text-green-600">{estatisticasChamados.resolvidos}</CardTitle>
+                <CardTitle className="text-3xl text-green-600">{stats.resumo.resolvidos}</CardTitle>
               </CardHeader>
             </Card>
           </div>
@@ -279,22 +274,18 @@ export function RelatoriosPage() {
               <CardTitle>Por Prioridade</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-emerald-50 border border-emerald-200">
                   <span className="text-emerald-700 font-medium">Baixa</span>
-                  <span className="text-2xl font-bold text-emerald-700">{estatisticasChamados.porPrioridade.baixa}</span>
+                  <span className="text-2xl font-bold text-emerald-700">{stats.prioridades.baixa}</span>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-amber-50 border border-amber-200">
-                  <span className="text-amber-700 font-medium">Media</span>
-                  <span className="text-2xl font-bold text-amber-700">{estatisticasChamados.porPrioridade.media}</span>
+                  <span className="text-amber-700 font-medium">Média</span>
+                  <span className="text-2xl font-bold text-amber-700">{stats.prioridades.media}</span>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-orange-50 border border-orange-200">
                   <span className="text-orange-700 font-medium">Alta</span>
-                  <span className="text-2xl font-bold text-orange-700">{estatisticasChamados.porPrioridade.alta}</span>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-red-50 border border-red-200">
-                  <span className="text-red-700 font-medium">Critica</span>
-                  <span className="text-2xl font-bold text-red-700">{estatisticasChamados.porPrioridade.critica}</span>
+                  <span className="text-2xl font-bold text-orange-700">{stats.prioridades.alta}</span>
                 </div>
               </div>
             </CardContent>
@@ -310,11 +301,11 @@ export function RelatoriosPage() {
                   <CheckCircle className="size-4 text-green-600" />
                   Dentro do SLA
                 </CardDescription>
-                <CardTitle className="text-3xl text-green-600">{estatisticasSLA.dentroSLA}</CardTitle>
+                <CardTitle className="text-3xl text-green-600">{stats.sla.dentroSLA}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {((estatisticasSLA.dentroSLA / (estatisticasSLA.dentroSLA + estatisticasSLA.foraSLA)) * 100).toFixed(1)}% dos chamados
+                  {stats.sla.dentroSLA + stats.sla.foraSLA > 0 ? ((stats.sla.dentroSLA / (stats.sla.dentroSLA + stats.sla.foraSLA)) * 100).toFixed(1) : 0}% dos chamados
                 </p>
               </CardContent>
             </Card>
@@ -324,11 +315,11 @@ export function RelatoriosPage() {
                   <XCircle className="size-4 text-red-600" />
                   Fora do SLA
                 </CardDescription>
-                <CardTitle className="text-3xl text-red-600">{estatisticasSLA.foraSLA}</CardTitle>
+                <CardTitle className="text-3xl text-red-600">{stats.sla.foraSLA}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {((estatisticasSLA.foraSLA / (estatisticasSLA.dentroSLA + estatisticasSLA.foraSLA)) * 100).toFixed(1)}% dos chamados
+                  {stats.sla.dentroSLA + stats.sla.foraSLA > 0 ? ((stats.sla.foraSLA / (stats.sla.dentroSLA + stats.sla.foraSLA)) * 100).toFixed(1) : 0}% dos chamados
                 </p>
               </CardContent>
             </Card>
@@ -336,9 +327,9 @@ export function RelatoriosPage() {
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
                   <Clock className="size-4 text-blue-600" />
-                  Tempo Medio de Atendimento
+                  Tempo Médio de Atendimento
                 </CardDescription>
-                <CardTitle className="text-3xl text-blue-600">{estatisticasSLA.tempoMedio}</CardTitle>
+                <CardTitle className="text-3xl text-blue-600">{stats.sla.tempoMedio}</CardTitle>
               </CardHeader>
             </Card>
           </div>
@@ -348,29 +339,29 @@ export function RelatoriosPage() {
         <TabsContent value="niveis" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Chamados por Nivel (N1, N2, N3)</CardTitle>
+              <CardTitle>Chamados por Nível (N1, N2, N3)</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
-                    <TableHead className="text-center text-white font-semibold py-4">Nivel</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Nível</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Escalonados</TableHead>
-                    <TableHead className="text-center text-white font-semibold py-4">Tempo Medio</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Tempo Médio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {estatisticasNiveis.map((nivel) => (
+                  {stats.niveis.map((nivel: any) => (
                     <TableRow key={nivel.nivel}>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Badge variant="outline" className="bg-[#3ba5d8]/10 text-[#3ba5d8] border-[#3ba5d8]/20">
                           {nivel.nivel}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{nivel.chamados}</TableCell>
-                      <TableCell>{nivel.escalonados}</TableCell>
-                      <TableCell>{nivel.tempoMedio}</TableCell>
+                      <TableCell className="text-center font-medium">{nivel.chamados}</TableCell>
+                      <TableCell className="text-center">{nivel.escalonados}</TableCell>
+                      <TableCell className="text-center">{nivel.tempoMedio}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -383,27 +374,27 @@ export function RelatoriosPage() {
         <TabsContent value="tecnicos" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Desempenho dos Tecnicos</CardTitle>
+              <CardTitle>Desempenho dos Técnicos</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
-                    <TableHead className="text-center text-white font-semibold py-4">Tecnico</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Técnico</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados Atendidos</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados Resolvidos</TableHead>
-                    <TableHead className="text-center text-white font-semibold py-4">Tempo Medio</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Tempo Médio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {estatisticasTecnicos.map((tecnico) => (
+                  {stats.tecnicos.map((tecnico: any) => (
                     <TableRow key={tecnico.nome}>
-                      <TableCell className="font-medium">{tecnico.nome}</TableCell>
-                      <TableCell>{tecnico.atendidos}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-center font-medium">{tecnico.nome}</TableCell>
+                      <TableCell className="text-center">{tecnico.atendidos}</TableCell>
+                      <TableCell className="text-center">
                         <span className="text-green-600 font-medium">{tecnico.resolvidos}</span>
                       </TableCell>
-                      <TableCell>{tecnico.tempoMedio}</TableCell>
+                      <TableCell className="text-center">{tecnico.tempoMedio}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -417,23 +408,23 @@ export function RelatoriosPage() {
           <Card>
             <CardHeader>
               <CardTitle>Equipamentos com Mais Chamados</CardTitle>
-              <CardDescription>Equipamentos que requerem mais atencao</CardDescription>
+              <CardDescription>Equipamentos que requerem mais atenção</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                     <TableHead className="text-center text-white font-semibold py-4">Equipamento</TableHead>
-                    <TableHead className="text-center text-white font-semibold py-4">Patrimonio</TableHead>
+                    <TableHead className="text-center text-white font-semibold py-4">Patrimônio</TableHead>
                     <TableHead className="text-center text-white font-semibold py-4">Chamados</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {equipamentosProblematicos.map((eq, index) => (
+                  {stats.equipamentos.map((eq: any, index: number) => (
                     <TableRow key={eq.patrimonio}>
-                      <TableCell className="font-medium">{eq.equipamento}</TableCell>
-                      <TableCell className="font-mono">{eq.patrimonio}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-center font-medium">{eq.equipamento}</TableCell>
+                      <TableCell className="text-center font-mono">{eq.patrimonio}</TableCell>
+                      <TableCell className="text-center">
                         <Badge 
                           variant="outline" 
                           className={index === 0 ? "bg-red-100 text-red-700 border-red-200" : "bg-amber-100 text-amber-700 border-amber-200"}
@@ -463,25 +454,25 @@ export function RelatoriosPage() {
               Exportar Logs
             </Button>
           </div>
-          <CardDescription>Acoes realizadas no sistema</CardDescription>
+          <CardDescription>Ações realizadas no sistema</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
                 <TableHead className="text-center text-white font-semibold py-4">Data/Hora</TableHead>
-                <TableHead className="text-center text-white font-semibold py-4">Usuario</TableHead>
-                <TableHead className="text-center text-white font-semibold py-4">Acao</TableHead>
+                <TableHead className="text-center text-white font-semibold py-4">Usuário</TableHead>
+                <TableHead className="text-center text-white font-semibold py-4">Ação</TableHead>
                 <TableHead className="text-center text-white font-semibold py-4">IP</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logsAuditoria.map((log, index) => (
                 <TableRow key={index}>
-                  <TableCell className="text-sm">{log.data}</TableCell>
-                  <TableCell className="font-medium">{log.usuario}</TableCell>
-                  <TableCell>{log.acao}</TableCell>
-                  <TableCell className="font-mono text-sm">{log.ip}</TableCell>
+                  <TableCell className="text-center text-sm">{formatDate(log.timestamp)}</TableCell>
+                  <TableCell className="text-center font-medium">{log.usuario_nome || "Sistema"}</TableCell>
+                  <TableCell className="text-center">{log.acao}</TableCell>
+                  <TableCell className="text-center font-mono text-sm">{log.ip || "N/A"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

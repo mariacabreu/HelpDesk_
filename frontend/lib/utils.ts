@@ -79,3 +79,16 @@ export function maskPhone(value: string) {
     .replace(/(\d{5})(\d)/, "$1-$2")
     .replace(/(-\d{4})\d+?$/, "$1")
 }
+
+export async function safeJson<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get("content-type")
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      return await response.json()
+    } catch (e) {
+      console.error("Erro ao processar JSON:", e)
+      return null
+    }
+  }
+  return null
+}

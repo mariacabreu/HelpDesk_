@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { formatDateShort, formatDate } from "@/lib/utils"
+import { formatDateShort, formatDate, safeJson } from "@/lib/utils"
 import { toast } from "sonner"
 import { 
   Database, Download, Upload, Clock, CheckCircle, AlertCircle, 
@@ -51,8 +51,10 @@ export function BackupPage() {
     try {
       const bkpRes = await fetch(`/api/empresas/${empresaId}/backups`)
       if (bkpRes.ok) {
-        const data = await bkpRes.json()
-        setBackups(data.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()))
+        const data = await safeJson<any[]>(bkpRes)
+        if (data) {
+          setBackups(data.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()))
+        }
       }
     } catch (err) {
       console.error("Erro ao buscar backups:", err)
@@ -295,9 +297,7 @@ export function BackupPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
-                  <TableHead className="w-[80px] text-center text-white font-semibold py-4">ID</TableHead>
                   <TableHead className="w-[120px] text-center text-white font-semibold py-4">Data/Hora</TableHead>
-                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tipo</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold py-4">Tamanho</TableHead>
                   <TableHead className="w-[100px] text-center text-white font-semibold py-4">Duração</TableHead>
                   <TableHead className="w-[120px] text-center text-white font-semibold py-4">Status</TableHead>
@@ -307,7 +307,7 @@ export function BackupPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground border-border">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground border-border">
                       Carregando histórico...
                     </TableCell>
                   </TableRow>
@@ -318,17 +318,11 @@ export function BackupPage() {
                     return (
                       <TableRow key={backup.id} className="data-table-row group">
                         <TableCell className="py-4 text-left">
-                          <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
-                            {backup.id}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-4 text-left">
                           <div className="flex flex-col">
                             <span className="text-xs font-black text-[#1a3a5c] tracking-tight">{formatDate(backup.data).split(' ')[0]}</span>
                             <span className="text-[10px] font-bold text-muted-foreground/70">{formatDate(backup.data).split(' ')[1]}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize text-left text-sm text-gray-600">{backup.tipo || "Manual"}</TableCell>
                         <TableCell className="text-left text-sm font-medium text-gray-700">{formatSize(backup.tamanho)}</TableCell>
                         <TableCell className="text-left text-sm text-gray-500">{backup.duracao || "N/A"}</TableCell>
                         <TableCell className="text-left">
@@ -366,7 +360,7 @@ export function BackupPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       Nenhum backup encontrado.
                     </TableCell>
                   </TableRow>

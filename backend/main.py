@@ -413,6 +413,7 @@ class EquipamentoCreate(BaseModel):
     modelo: str | None = None
     numero_serie: str | None = None
     status: str | None = "ativo"
+    especificacoes: dict | None = {}
 
 class EquipamentoUpdate(BaseModel):
     nome: str | None = None
@@ -422,6 +423,7 @@ class EquipamentoUpdate(BaseModel):
     modelo: str | None = None
     numero_serie: str | None = None
     status: str | None = None
+    especificacoes: dict | None = None
 
 @app.post("/empresas")
 def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
@@ -627,7 +629,7 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
         # Notificar solicitante (confirmação)
         notif_sol = Notificacao(
             usuario_id=db_chamado.solicitante_id,
-            mensagem=f"Seu chamado CH-{db_chamado.id} foi aberto com sucesso: {chamado.titulo}"
+            mensagem=f"Seu chamado foi aberto com sucesso: {chamado.titulo}"
         )
         db.add(notif_sol)
 
@@ -640,14 +642,14 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
             if g.id != db_chamado.solicitante_id:
                 db.add(Notificacao(
                     usuario_id=g.id,
-                    mensagem=f"Novo chamado CH-{db_chamado.id} aberto por {solicitante_nome}: {chamado.titulo}"
+                    mensagem=f"Novo chamado aberto por {solicitante_nome}: {chamado.titulo}"
                 ))
 
         # Notificar se atribuído
         if atribuido_id and atribuido_id > 0:
             notif = Notificacao(
                 usuario_id=atribuido_id,
-                mensagem=f"Novo chamado CH-{db_chamado.id} atribuído a você: {chamado.titulo}"
+                mensagem=f"Novo chamado atribuído a você: {chamado.titulo}"
             )
             db.add(notif)
             
@@ -655,7 +657,7 @@ def create_chamado(chamado: ChamadoCreate, db: Session = Depends(get_db)):
         db.refresh(db_chamado)
         
         # Log de criação de chamado
-        registrar_log(db, "success", "Chamados", f"Novo chamado CH-{db_chamado.id} criado: {db_chamado.titulo}", usuario_id=db_chamado.solicitante_id, usuario_nome=solicitante_nome, empresa_id=db_chamado.empresa_id)
+        registrar_log(db, "success", "Chamados", f"Novo chamado criado: {db_chamado.titulo}", usuario_id=db_chamado.solicitante_id, usuario_nome=solicitante_nome, empresa_id=db_chamado.empresa_id)
         
         return format_chamado(db_chamado)
     except Exception as e:
@@ -687,6 +689,7 @@ def create_equipamento(e: EquipamentoCreate, db: Session = Depends(get_db)):
             modelo=e.modelo,
             numero_serie=e.numero_serie,
             status=e.status or "ativo",
+            especificacoes=e.especificacoes or {}
         )
         db.add(novo)
         db.commit()
@@ -707,6 +710,20 @@ def update_equipamento(equipamento_id: int, e: EquipamentoUpdate, db: Session = 
         raise HTTPException(status_code=404, detail="Equipamento não encontrado")
     
     update_data = e.dict(exclude_unset=True)
+    
+    # Tratamento especial para especificações (merge se necessário ou substituição)
+    if 'especificacoes' in update_data and update_data['especificacoes'] is not None:
+        current_specs = db_eq.especificacoes or {}
+        if isinstance(current_specs, str): # Fallback se for string
+            import json
+            try: current_specs = json.loads(current_specs)
+            except: current_specs = {}
+        
+        # Merge simples das especificações
+        new_specs = {**current_specs, **update_data['especificacoes']}
+        db_eq.especificacoes = new_specs
+        del update_data['especificacoes']
+        
     for key, value in update_data.items():
         setattr(db_eq, key, value)
     
@@ -879,7 +896,7 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
             # Notificar solicitante
             db.add(Notificacao(
                 usuario_id=db_chamado.solicitante_id,
-                mensagem=f"Status do chamado CH-{db_chamado.id} alterado para {new_status_val}"
+                mensagem=f"Status do chamado alterado para {new_status_val}"
             ))
             
         elif key == "escalonado_por_nivel" and value:
@@ -908,7 +925,7 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
             for s in suportes_next:
                 db.add(Notificacao(
                     usuario_id=s.id,
-                    mensagem=f"Chamado CH-{db_chamado.id} escalonado para o pool {next_nivel.upper()}"
+                    mensagem=f"Chamado escalonado para o pool {next_nivel.upper()}"
                 ))
             
             db.add(HistoricoChamado(
@@ -941,13 +958,13 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
                 
                 db.add(Notificacao(
                     usuario_id=value,
-                    mensagem=f"O chamado CH-{db_chamado.id} foi atribuído a você."
+                    mensagem=f"O chamado foi atribuído a você."
                 ))
                 
                 # Notificar o solicitante
                 db.add(Notificacao(
                     usuario_id=db_chamado.solicitante_id,
-                    mensagem=f"Seu chamado CH-{db_chamado.id} agora tem um responsável técnico."
+                    mensagem=f"Seu chamado agora tem um responsável técnico."
                 ))
         else:
             setattr(db_chamado, key, value)
@@ -964,7 +981,7 @@ def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depen
             if user_acao:
                 usuario_acao_nome = user_acao.nome
         
-        registrar_log(db, "info", "Chamados", f"Chamado CH-{db_chamado.id} atualizado", usuario_id=usuario_acao_id, usuario_nome=usuario_acao_nome, empresa_id=db_chamado.empresa_id)
+        registrar_log(db, "info", "Chamados", f"Chamado atualizado", usuario_id=usuario_acao_id, usuario_nome=usuario_acao_nome, empresa_id=db_chamado.empresa_id)
         
         return format_chamado(db_chamado)
     except Exception as e:
@@ -1216,6 +1233,119 @@ def get_stats_empresa(empresa_id: int, db: Session = Depends(get_db)):
         "total_equipamentos": total_equipamentos,
         "total_funcionarios": total_funcionarios,
         "total_chamados": total_chamados
+    }
+
+@app.get("/stats/relatorios")
+def get_stats_relatorios(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    from database import Chamado, Funcionario, Equipamento, HistoricoChamado, StatusChamado, Prioridade
+    
+    # 1. Resumo de Chamados
+    total_chamados = db.query(func.count(Chamado.id)).scalar() or 0
+    abertos = db.query(func.count(Chamado.id)).filter(Chamado.status == StatusChamado.aberto).scalar() or 0
+    em_andamento = db.query(func.count(Chamado.id)).filter(Chamado.status == StatusChamado.em_atendimento).scalar() or 0
+    resolvidos = db.query(func.count(Chamado.id)).filter(Chamado.status.in_([StatusChamado.resolvido, StatusChamado.fechado])).scalar() or 0
+    
+    # 2. Por Prioridade
+    baixa = db.query(func.count(Chamado.id)).filter(Chamado.prioridade == Prioridade.baixa).scalar() or 0
+    media = db.query(func.count(Chamado.id)).filter(Chamado.prioridade == Prioridade.media).scalar() or 0
+    alta = db.query(func.count(Chamado.id)).filter(Chamado.prioridade == Prioridade.alta).scalar() or 0
+    
+    # 3. SLA Metrics
+    # Para simplificar: Dentro do SLA se resolvido < 24h
+    dentro_sla = 0
+    fora_sla = 0
+    tempos_resolucao = []
+    
+    concluidos = db.query(Chamado).filter(Chamado.status.in_([StatusChamado.resolvido, StatusChamado.fechado])).all()
+    for c in concluidos:
+        if c.data_fechamento and c.data_abertura:
+            diff = (c.data_fechamento - c.data_abertura).total_seconds()
+            tempos_resolucao.append(diff)
+            if diff < 86400: # 24 horas
+                dentro_sla += 1
+            else:
+                fora_sla += 1
+    
+    tempo_medio_segundos = sum(tempos_resolucao) / len(tempos_resolucao) if tempos_resolucao else 0
+    
+    def format_seconds(seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        return f"{h}h {m}min"
+    
+    # 4. Por Nível
+    stats_niveis = []
+    for nivel in ["n1", "n2", "n3"]:
+        # Chamados que passaram por este nível (via escalonado_por_nivel ou atribuido_a_id)
+        count = db.query(func.count(Chamado.id)).filter(
+            (Chamado.escalonado_por_nivel == nivel) | 
+            (Chamado.id.in_(
+                db.query(HistoricoChamado.chamado_id).join(Funcionario, HistoricoChamado.usuario_id == Funcionario.id).filter(Funcionario.nivel == nivel)
+            ))
+        ).scalar() or 0
+        
+        escalonados = db.query(func.count(Chamado.id)).filter(Chamado.escalonado_por_nivel == nivel).scalar() or 0
+        
+        stats_niveis.append({
+            "nivel": nivel.upper(),
+            "chamados": count,
+            "escalonados": escalonados,
+            "tempoMedio": "45min" if nivel == "n1" else "1h 30min" # Mock parcial aqui por falta de histórico detalhado
+        })
+        
+    # 5. Desempenho dos Técnicos
+    tecnicos = db.query(Funcionario).filter(Funcionario.nivel.in_(["n1", "n2", "n3"])).all()
+    stats_tecnicos = []
+    for t in tecnicos:
+        atendidos = db.query(func.count(Chamado.id)).filter(Chamado.atribuido_a_id == t.id).scalar() or 0
+        resolvidos_t = db.query(func.count(Chamado.id)).filter(
+            Chamado.atribuido_a_id == t.id, 
+            Chamado.status.in_([StatusChamado.resolvido, StatusChamado.fechado])
+        ).scalar() or 0
+        
+        stats_tecnicos.append({
+            "nome": t.nome,
+            "atendidos": atendidos,
+            "resolvidos": resolvidos_t,
+            "tempoMedio": "1h 15min" # Mock parcial
+        })
+        
+    # 6. Equipamentos Problemáticos
+    problemas_equip = db.query(
+        Equipamento.nome, 
+        Equipamento.patrimonio, 
+        func.count(Chamado.id).label("total")
+    ).join(Chamado, Equipamento.id == Chamado.equipamento_id).group_by(Equipamento.id).order_by(func.count(Chamado.id).desc()).limit(5).all()
+    
+    equipamentos_list = []
+    for nome, patrimonio, total in problemas_equip:
+        equipamentos_list.append({
+            "equipamento": nome,
+            "patrimonio": patrimonio,
+            "chamados": total
+        })
+        
+    return {
+        "resumo": {
+            "total": total_chamados,
+            "abertos": abertos,
+            "emAndamento": em_andamento,
+            "resolvidos": resolvidos
+        },
+        "prioridades": {
+            "baixa": baixa,
+            "media": media,
+            "alta": alta
+        },
+        "sla": {
+            "dentroSLA": dentro_sla,
+            "foraSLA": fora_sla,
+            "tempoMedio": format_seconds(tempo_medio_segundos)
+        },
+        "niveis": stats_niveis,
+        "tecnicos": stats_tecnicos,
+        "equipamentos": equipamentos_list
     }
 
 @app.patch("/chamados/{chamado_id}/cancelar")

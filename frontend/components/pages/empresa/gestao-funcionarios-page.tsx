@@ -9,8 +9,18 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { formatDateShort, maskCPF, maskPhone } from "@/lib/utils"
+import { formatDateShort, maskCPF, maskPhone, safeJson } from "@/lib/utils"
 import { toast } from "sonner"
 import { Plus, Eye, Pencil, Trash2, Search, Filter, UserPlus, Mail, Phone, Shield, Calendar, Building2, CheckCircle2, Lock, UserCircle, XCircle, RotateCcw } from "lucide-react"
 
@@ -28,6 +38,7 @@ const nivelConfig: Record<string, string> = {
   n1: "Júnior (N1)",
   n2: "Pleno (N2)",
   n3: "Sênior (N3)",
+  none: "Não atribuído",
 }
 
 export function GestaoFuncionariosPage() {
@@ -42,6 +53,8 @@ export function GestaoFuncionariosPage() {
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
   const [modalEditar, setModalEditar] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [funcionarioParaExcluir, setFuncionarioParaExcluir] = useState<number | null>(null)
 
   // Estados do formulário
   const [novoFunc, setNovoFunc] = useState({
@@ -79,8 +92,8 @@ export function GestaoFuncionariosPage() {
           if (!res.ok) {
             throw new Error(`Erro ${res.status}: ${res.statusText}`)
           }
-          const data = await res.json()
-          setFuncionarios(data)
+          const data = await safeJson<any[]>(res)
+          setFuncionarios(data || [])
         } catch (err) {
           console.error("Erro ao buscar funcionários:", err)
           toast.error("Erro ao carregar funcionários", {
@@ -125,13 +138,12 @@ export function GestaoFuncionariosPage() {
         body: JSON.stringify(payload)
       })
 
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json()
-        if (!response.ok) {
-          throw new Error(data.detail || "Erro ao cadastrar funcionário")
-        }
+      const data = await safeJson<any>(response)
+      if (!response.ok) {
+        throw new Error(data?.detail || `Erro no servidor (${response.status})`)
+      }
 
+      if (data) {
         // Notificação melhorada com Sonner
         toast.success("Funcionário Cadastrado!", {
           description: data.email_enviado 
@@ -140,10 +152,6 @@ export function GestaoFuncionariosPage() {
           icon: <CheckCircle2 className="size-5 text-green-500" />,
           duration: 5000,
         })
-      } else {
-        const text = await response.text()
-        console.error("Resposta do servidor não é JSON:", text)
-        throw new Error("Erro interno do servidor. Por favor, tente novamente.")
       }
 
       setModalCadastro(false)
@@ -183,8 +191,8 @@ export function GestaoFuncionariosPage() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Erro ao atualizar funcionário")
+        const error = await safeJson<any>(response)
+        throw new Error(error?.detail || `Erro no servidor (${response.status})`)
       }
 
       toast.success("Funcionário Atualizado!", {
@@ -201,17 +209,22 @@ export function GestaoFuncionariosPage() {
     }
   }
 
-  const handleExcluir = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir permanentemente este funcionário?")) return
+  const handleExcluir = (id: number) => {
+    setFuncionarioParaExcluir(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmarExclusao = async () => {
+    if (!funcionarioParaExcluir) return
 
     try {
-      const response = await fetch(`/api/funcionarios/${id}`, {
+      const response = await fetch(`/api/funcionarios/${funcionarioParaExcluir}`, {
         method: "DELETE"
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Erro ao excluir funcionário")
+        const error = await safeJson<any>(response)
+        throw new Error(error?.detail || `Erro no servidor (${response.status})`)
       }
 
       toast.success("Funcionário Excluído", {
@@ -222,6 +235,9 @@ export function GestaoFuncionariosPage() {
       toast.error("Erro na exclusão", {
         description: err.message
       })
+    } finally {
+      setConfirmDeleteOpen(false)
+      setFuncionarioParaExcluir(null)
     }
   }
 
@@ -336,12 +352,15 @@ export function GestaoFuncionariosPage() {
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                  <SelectItem value="Desenvolvedor Frontend">Desenvolvedor Frontend</SelectItem>
+                  <SelectItem value="Desenvolvedor Backend">Desenvolvedor Backend</SelectItem>
                   <SelectItem value="QA / Testes">QA / Testes</SelectItem>
                   <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
                   <SelectItem value="Backup">Backup</SelectItem>
                   <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
                   <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
                   <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -640,12 +659,15 @@ export function GestaoFuncionariosPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="Desenvolvedor Frontend">Desenvolvedor Frontend</SelectItem>
+                    <SelectItem value="Desenvolvedor Backend">Desenvolvedor Backend</SelectItem>
                     <SelectItem value="QA / Testes">QA / Testes</SelectItem>
                     <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
                     <SelectItem value="Backup">Backup</SelectItem>
                     <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
                     <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
                     <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -757,12 +779,15 @@ export function GestaoFuncionariosPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="Desenvolvedor Frontend">Desenvolvedor Frontend</SelectItem>
+                    <SelectItem value="Desenvolvedor Backend">Desenvolvedor Backend</SelectItem>
                     <SelectItem value="QA / Testes">QA / Testes</SelectItem>
                     <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
                     <SelectItem value="Backup">Backup</SelectItem>
                     <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
                     <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
                     <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -798,6 +823,29 @@ export function GestaoFuncionariosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#1a3a5c]">Tem certeza que deseja excluir?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não poderá ser desfeita. O funcionário será removido permanentemente do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFuncionarioParaExcluir(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmarExclusao}
+              className="bg-[#1a3a5c] hover:bg-[#1a3a5c]/90 text-white"
+            >
+              Excluir Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, RotateCcw, Eye, UserPlus, RefreshCw, CheckCircle, Lock, MoreHorizontal, Clock, AlertTriangle, Loader2, Shuffle, ArrowRight, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { formatDate } from "@/lib/utils"
+import { formatDate, safeJson } from "@/lib/utils"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -70,6 +70,7 @@ export function ChamadosPage() {
   const [filtros, setFiltros] = useState({
     numero: "",
     empresa: "",
+    solicitante: "",
     prioridade: "",
     status: "",
   })
@@ -80,7 +81,7 @@ export function ChamadosPage() {
   const [escalonando, setEscalonando] = useState(false)
   const [tecnicosN3, setTecnicosN3] = useState<any[]>([])
   const [tecnicoSelecionadoId, setTecnicoSelecionadoId] = useState<string>("")
-  const [confirmarAcao, setConfirmarAcao] = useState<{tipo: 'resolvido' | 'fechado' | 'aberto', chamadoId: number} | null>(null)
+  const [confirmarAcao, setConfirmarAcao] = useState<{tipo: 'resolvido' | 'fechado' | 'aberto' | 'assumir', chamadoId: number} | null>(null)
   const [acaoLoading, setAcaoLoading] = useState(false)
   const { toast } = useToast()
   const [userData, setUserData] = useState<any>(null)
@@ -99,8 +100,8 @@ export function ChamadosPage() {
         
       const res = await fetch(url)
       if (!res.ok) throw new Error("Erro ao buscar chamados")
-      const data = await res.json()
-      setChamados(data)
+      const data = await safeJson<any[]>(res)
+      setChamados(data || [])
     } catch (err) {
       console.error(err)
       toast({ title: "Erro", description: "Falha ao carregar chamados", variant: "destructive" })
@@ -118,27 +119,6 @@ export function ChamadosPage() {
     fetchChamados()
   }, [])
 
-  const assumirChamado = async (chamadoId: number) => {
-    if (!userData?.id) return
-    
-    try {
-      const res = await fetch(`/api/chamados/${chamadoId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          atribuido_a_id: userData.id
-        })
-      })
-      
-      if (!res.ok) throw new Error("Erro ao assumir chamado")
-      
-      toast({ title: "Sucesso", description: "Você assumiu este chamado." })
-      fetchChamados()
-    } catch (err) {
-      toast({ title: "Erro", description: "Falha ao assumir chamado", variant: "destructive" })
-    }
-  }
-
   const escalonarChamado = (chamado: any) => {
     setChamadoParaEscalonar(chamado)
     setTecnicoSelecionadoId("")
@@ -146,8 +126,9 @@ export function ChamadosPage() {
     // Se o usuário for N3, buscar outros técnicos N3 para seleção
     if (userData?.nivel === "n3" && userData?.empresa?.id) {
       fetch(`/api/funcionarios/empresa/${userData.empresa.id}`)
-        .then(res => res.json())
+        .then(res => safeJson<any[]>(res))
         .then(data => {
+          if (!data) return
           // Filtrar por nível n3 e remover o próprio usuário
           const n3s = data.filter((f: any) => f.nivel === "n3" && f.id !== userData.id)
           setTecnicosN3(n3s)
@@ -195,21 +176,39 @@ export function ChamadosPage() {
     
     setAcaoLoading(true)
     try {
-      const res = await fetch(`/api/chamados/${confirmarAcao.chamadoId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: confirmarAcao.tipo })
-      })
-      
-      if (!res.ok) throw new Error(`Erro ao ${confirmarAcao.tipo === 'aberto' ? 'reabrir' : confirmarAcao.tipo === 'resolvido' ? 'resolver' : 'encerrar'} chamado`)
-      
-      const mensagens = {
-        resolvido: "Chamado marcado como resolvido.",
-        fechado: "Chamado encerrado com sucesso.",
-        aberto: "Chamado reaberto com sucesso."
+      if (confirmarAcao.tipo === 'assumir') {
+        if (!userData?.id) throw new Error("Usuário não identificado")
+        
+        const res = await fetch(`/api/chamados/${confirmarAcao.chamadoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            atribuido_a_id: userData.id
+          })
+        })
+        
+        if (!res.ok) throw new Error("Erro ao assumir chamado")
+        
+        toast({ title: "Sucesso", description: "Você assumiu este chamado." })
+      } else {
+        const res = await fetch(`/api/chamados/${confirmarAcao.chamadoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: confirmarAcao.tipo })
+        })
+        
+        if (!res.ok) throw new Error(`Erro ao ${confirmarAcao.tipo === 'aberto' ? 'reabrir' : confirmarAcao.tipo === 'resolvido' ? 'resolver' : 'encerrar'} chamado`)
+        
+        const mensagens = {
+          resolvido: "Chamado marcado como resolvido.",
+          fechado: "Chamado encerrado com sucesso.",
+          aberto: "Chamado reaberto com sucesso."
+        }
+        
+        // @ts-ignore
+        toast({ title: "Sucesso", description: mensagens[confirmarAcao.tipo] })
       }
       
-      toast({ title: "Sucesso", description: mensagens[confirmarAcao.tipo] })
       setConfirmarAcao(null)
       fetchChamados()
     } catch (err: any) {
@@ -223,6 +222,7 @@ export function ChamadosPage() {
     setFiltros({
       numero: "",
       empresa: "",
+      solicitante: "",
       prioridade: "",
       status: "",
     })
@@ -231,6 +231,7 @@ export function ChamadosPage() {
   const chamadosFiltrados = chamados.filter(c => {
     if (filtros.numero && !c.id.toString().includes(filtros.numero)) return false
     if (filtros.empresa && !c.empresa_nome?.toLowerCase().includes(filtros.empresa.toLowerCase())) return false
+    if (filtros.solicitante && !((c.nome_solicitante || c.solicitante_nome)?.toLowerCase().includes(filtros.solicitante.toLowerCase()))) return false
     if (filtros.prioridade && c.prioridade !== filtros.prioridade) return false
     if (filtros.status && c.status !== filtros.status) return false
     return true
@@ -254,24 +255,14 @@ export function ChamadosPage() {
           <CardTitle className="section-title">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="numero">Número do Ticket</Label>
+              <Label htmlFor="solicitante">Solicitante</Label>
               <Input
-                id="numero"
-                placeholder="Ex: 15"
-                value={filtros.numero}
-                onChange={(e) => setFiltros({ ...filtros, numero: e.target.value })}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="empresa">Empresa</Label>
-              <Input
-                id="empresa"
-                placeholder="Nome da empresa"
-                value={filtros.empresa}
-                onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
+                id="solicitante"
+                placeholder="Nome do solicitante"
+                value={filtros.solicitante}
+                onChange={(e) => setFiltros({ ...filtros, solicitante: e.target.value })}
               />
             </div>
 
@@ -285,7 +276,6 @@ export function ChamadosPage() {
                   <SelectItem value="baixa">Baixa</SelectItem>
                   <SelectItem value="media">Média</SelectItem>
                   <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="critica">Crítica</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -331,7 +321,6 @@ export function ChamadosPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#1a3a5c]">
-                  <TableHead className="w-[100px] text-center text-white font-semibold py-4">Nº Chamado</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Solicitante</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Equipamento</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Prioridade</TableHead>
@@ -344,7 +333,6 @@ export function ChamadosPage() {
               <TableBody>
                 {chamadosFiltrados.map((chamado) => (
                   <TableRow key={chamado.id} className="data-table-row">
-                    <TableCell className="font-medium text-[#1a3a5c] text-center">CH-{chamado.id}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1">
@@ -396,7 +384,7 @@ export function ChamadosPage() {
                               Visualizar
                             </DropdownMenuItem>
                             {!chamado.atribuido_a_id && (
-                              <DropdownMenuItem onClick={() => assumirChamado(chamado.id)}>
+                              <DropdownMenuItem onClick={() => setConfirmarAcao({tipo: 'assumir', chamadoId: chamado.id})}>
                                 <UserPlus className="size-4 mr-2" />
                                 Assumir chamado
                               </DropdownMenuItem>
@@ -441,8 +429,10 @@ export function ChamadosPage() {
       <Dialog open={!!chamadoSelecionado} onOpenChange={(open) => !open && setChamadoSelecionado(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado CH-{chamadoSelecionado?.id}</DialogTitle>
-            <DialogDescription>Informacoes completas do chamado</DialogDescription>
+            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado</DialogTitle>
+            <DialogDescription>
+              Informações completas e histórico do chamado
+            </DialogDescription>
           </DialogHeader>
           {chamadoSelecionado && (
             <div className="grid grid-cols-2 gap-4 py-4">
@@ -507,11 +497,11 @@ export function ChamadosPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[#1a3a5c]">
-              <RefreshCw className="size-5 text-[#3ba5d8]" />
-              Escalonar Chamado CH-{chamadoParaEscalonar?.id}
+              <RefreshCw className="size-5 text-[#1a3a5c]" />
+              Escalonar Chamado
             </DialogTitle>
             <DialogDescription>
-              Confirme o escalonamento deste chamado aberto por <span className="font-bold text-[#1a3a5c]">{chamadoParaEscalonar?.nome_solicitante || chamadoParaEscalonar?.solicitante_nome}</span> para o próximo nível de suporte.
+              Encaminhe este chamado para um nível superior de suporte.
             </DialogDescription>
           </DialogHeader>
 
@@ -525,12 +515,12 @@ export function ChamadosPage() {
               </div>
               
               <div className="flex flex-col items-center">
-                <ArrowRight className="size-5 text-[#3ba5d8] animate-pulse" />
+                <ArrowRight className="size-5 text-[#1a3a5c] animate-pulse" />
               </div>
 
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Próximo Nível</span>
-                <Badge className="bg-[#3ba5d8] text-white border-none px-3 py-1">
+                <Badge className="bg-[#1a3a5c] text-white border-none px-3 py-1">
                   {(userData?.nivel?.toLowerCase() || "n1") === "n1" ? "N2" : "N3"}
                 </Badge>
               </div>
@@ -570,7 +560,7 @@ export function ChamadosPage() {
             <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-3">
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 p-2 rounded-full shrink-0">
-                  <Shuffle className="size-4 text-[#3ba5d8]" />
+                  <Shuffle className="size-4 text-[#1a3a5c]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-[#1a3a5c]">
@@ -603,7 +593,7 @@ export function ChamadosPage() {
               Cancelar
             </Button>
             <Button 
-              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2 px-6" 
+              className="bg-[#1a3a5c] hover:bg-[#1a3a5c]/90 text-white gap-2 px-6" 
               onClick={escalonarChamadoConfirmado}
               disabled={escalonando}
             >
@@ -621,8 +611,9 @@ export function ChamadosPage() {
             <DialogTitle className="flex items-center gap-2 text-[#1a3a5c]">
               {confirmarAcao?.tipo === 'resolvido' && <CheckCircle className="size-5 text-green-600" />}
               {confirmarAcao?.tipo === 'fechado' && <Lock className="size-5 text-gray-600" />}
-              {confirmarAcao?.tipo === 'aberto' && <RefreshCw className="size-5 text-blue-600" />}
-              {confirmarAcao?.tipo === 'resolvido' ? 'Resolver Chamado' : confirmarAcao?.tipo === 'fechado' ? 'Encerrar Chamado' : 'Reabrir Chamado'}
+              {confirmarAcao?.tipo === 'aberto' && <RefreshCw className="size-5 text-[#1a3a5c]" />}
+              {confirmarAcao?.tipo === 'assumir' && <UserPlus className="size-5 text-[#1a3a5c]" />}
+              {confirmarAcao?.tipo === 'resolvido' ? 'Resolver Chamado' : confirmarAcao?.tipo === 'fechado' ? 'Encerrar Chamado' : confirmarAcao?.tipo === 'assumir' ? 'Assumir Chamado' : 'Reabrir Chamado'}
             </DialogTitle>
             <DialogDescription>
               {confirmarAcao?.tipo === 'resolvido' && (
@@ -634,6 +625,9 @@ export function ChamadosPage() {
               {confirmarAcao?.tipo === 'aberto' && (
                 <>Deseja reabrir o chamado de <span className="font-bold text-[#1a3a5c]">{chamadosFiltrados.find(c => c.id === confirmarAcao.chamadoId)?.nome_solicitante || chamadosFiltrados.find(c => c.id === confirmarAcao.chamadoId)?.solicitante_nome}</span> para novo atendimento?</>
               )}
+              {confirmarAcao?.tipo === 'assumir' && (
+                <>Deseja assumir o atendimento do chamado de <span className="font-bold text-[#1a3a5c]">{chamadosFiltrados.find(c => c.id === confirmarAcao.chamadoId)?.nome_solicitante || chamadosFiltrados.find(c => c.id === confirmarAcao.chamadoId)?.solicitante_nome}</span>?</>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 gap-4">
@@ -641,7 +635,7 @@ export function ChamadosPage() {
               Cancelar
             </Button>
             <Button 
-              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6`}
+              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-[#1a3a5c] hover:bg-[#1a3a5c]/90'} text-white px-6`}
               onClick={executarAcaoConfirmada}
               disabled={acaoLoading}
             >

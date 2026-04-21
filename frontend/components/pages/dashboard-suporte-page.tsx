@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { formatDate } from "@/lib/utils"
+import { formatDate, safeJson } from "@/lib/utils"
 
 import {
   Table,
@@ -56,9 +56,9 @@ export function DashboardSuportePage() {
     }
 
     fetch(`/api/stats/suporte?tecnico_id=${tecnicoId}`)
-      .then(res => res.json())
+      .then(res => safeJson<any>(res))
       .then(data => {
-        setStats(data)
+        if (data) setStats(data)
         setLoading(false)
       })
       .catch(err => {
@@ -132,14 +132,14 @@ export function DashboardSuportePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 border-none shadow-md overflow-hidden bg-white">
-          <CardHeader className="bg-[#1a3a5c]/5 border-b pt-10 pb-8">
-            <div className="flex flex-col items-center justify-center text-center gap-4">
-              <div className="bg-[#3ba5d8]/10 p-2.5 rounded-full">
-                <TrendingUp className="size-5 text-[#3ba5d8]" />
+          <CardHeader className="bg-white py-4">
+            <div className="flex flex-col items-center justify-center text-center gap-2">
+              <div className="bg-[#3ba5d8]/10 p-2 rounded-full">
+                <TrendingUp className="size-4 text-[#3ba5d8]" />
               </div>
-              <div className="space-y-1">
-                <CardTitle className="text-xl font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
-                <CardDescription className="text-xs">Últimas solicitações recebidas para atendimento</CardDescription>
+              <div className="space-y-0.5">
+                <CardTitle className="text-lg font-bold text-[#1a3a5c]">Chamados Recentes</CardTitle>
+                <CardDescription className="text-[10px]">Últimas solicitações recebidas para atendimento</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -147,7 +147,6 @@ export function DashboardSuportePage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
-                  <TableHead className="text-center text-white font-semibold py-4">ID</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Solicitante</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Chamado</TableHead>
                   <TableHead className="text-center text-white font-semibold py-4">Prioridade</TableHead>
@@ -158,11 +157,6 @@ export function DashboardSuportePage() {
               <TableBody>
                 {(stats?.recentes || []).map((ticket: any) => (
                   <TableRow key={ticket.id} className="hover:bg-gray-50/80 transition-colors group">
-                    <TableCell className="text-center py-4">
-                      <span className="text-xs font-bold text-[#3ba5d8] bg-[#3ba5d8]/5 px-2 py-1 rounded-md">
-                        CH-{ticket.id.toString().padStart(3, '0')}
-                      </span>
-                    </TableCell>
                     <TableCell className="text-center py-4">
                       <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1.5">

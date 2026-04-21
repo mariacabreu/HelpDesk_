@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Enum
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from datetime import datetime
 import enum
@@ -21,8 +21,7 @@ class Prioridade(enum.Enum):
     baixa = "baixa"
     media = "media"
     alta = "alta"
-    urgente = "urgente"
-    critica = "critica"
+
 
 class Empresa(Base):
     __tablename__ = 'empresas'
@@ -89,6 +88,7 @@ class Equipamento(Base):
     modelo = Column(String(100))
     numero_serie = Column(String(100))
     status = Column(String(20), default="ativo") # ativo, inativo, manutenção
+    especificacoes = Column(JSON, default={}) # Campo flexível para SO, RAM, HD, etc.
     
     # Relacionamentos
     empresa = relationship("Empresa", back_populates="equipamentos")
@@ -218,8 +218,9 @@ class PasswordRecovery(Base):
     used = Column(Integer, default=0) # 0 = não usado, 1 = usado
 
 # Configuração do Banco de Dados
-# DATABASE_URL = "mysql+pymysql://root@localhost/helpdesk"
-DATABASE_URL = "sqlite:///./helpdesk.db"
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False}, # Necessário para SQLite

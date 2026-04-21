@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CheckCircle2, ArrowLeft, Building2, MapPin, Lock, Eye, EyeOff } from "lucide-react"
-import { maskCNPJ, maskPhone } from "@/lib/utils"
+import { maskCNPJ, maskPhone, safeJson } from "@/lib/utils"
 
 interface CompanyFormProps {
   onBack: () => void
@@ -66,8 +66,8 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
         const cepLimpo = maskedValue.replace(/\D/g, "")
         try {
           const response = await fetch(`/api/cep/${cepLimpo}`)
-          const data = await response.json()
-          if (!data.erro) {
+          const data = await safeJson<any>(response)
+          if (data && !data.erro) {
             setFormData((prev) => ({
               ...prev,
               rua: data.logradouro || prev.rua,
@@ -155,8 +155,8 @@ export function CompanyForm({ onBack }: CompanyFormProps) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        alert(errorData.detail || "Erro ao cadastrar empresa")
+        const errorData = await safeJson<any>(response)
+        alert(errorData?.detail || `Erro no servidor (${response.status})`)
         return
       }
 

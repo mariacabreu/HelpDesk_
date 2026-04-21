@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDate } from "@/lib/utils"
+import { formatDate, safeJson } from "@/lib/utils"
 import { 
   Building2, User, Mail, Eye, Paperclip, History, MessageSquare, XCircle, 
   Search, Filter, Calendar, Clock, AlertTriangle, CheckCircle2 
@@ -76,7 +76,8 @@ export function MeusChamadosPage() {
       
       if (!res.ok) throw new Error("Erro ao enviar comentário")
       
-      const novoHist = await res.json()
+      const novoHist = await safeJson<any>(res)
+      if (!novoHist) throw new Error("Resposta inválida ao enviar comentário")
       
       // Formatar para o frontend (o backend já retorna com nome do usuário se carregado, mas vamos garantir)
       const comentarioFormatado = {
@@ -109,8 +110,8 @@ export function MeusChamadosPage() {
       const solicitanteId = user.id
       if (solicitanteId) {
         fetch(`/api/chamados/solicitante/${solicitanteId}`)
-          .then(res => res.json())
-          .then(data => setChamados(data))
+          .then(res => safeJson<any[]>(res))
+          .then(data => setChamados(data || []))
           .catch(err => console.error("Erro ao buscar chamados:", err))
           .finally(() => setLoading(false))
       }
@@ -118,7 +119,7 @@ export function MeusChamadosPage() {
       const empresaId = user.empresa?.id
       if (empresaId) {
         fetch(`/api/equipamentos/${empresaId}`)
-          .then(res => res.json())
+          .then(res => safeJson<any[]>(res))
           .then((data) => {
             const map: Record<string, { nome: string; patrimonio?: string }> = {}
             ;(data || []).forEach((e: any) => {
@@ -163,10 +164,12 @@ export function MeusChamadosPage() {
         method: "PATCH"
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error(err?.detail || "Falha ao cancelar chamado")
+        const err = await safeJson<any>(res)
+        throw new Error(err?.detail || `Falha ao cancelar chamado (${res.status})`)
       }
-      const atualizado = await res.json()
+      const atualizado = await safeJson<any>(res)
+      if (!atualizado) throw new Error("Resposta inválida ao cancelar chamado")
+      
       setChamados(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
       if (chamadoSelecionado?.id === atualizado.id) setChamadoSelecionado(atualizado)
       setCancelOpen(false)
@@ -185,41 +188,6 @@ export function MeusChamadosPage() {
         <h1 className="page-title">Meus Chamados</h1>
         <p className="page-description">Acompanhe e gerencie seus chamados abertos</p>
       </div>
-
-      {/* Dados da Empresa */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
-              <Building2 className="size-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Empresa</p>
-                <p className="font-medium text-primary">
-                  {userData?.empresa?.nome_fantasia || userData?.empresa?.razao_social || "Não disponível"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
-              <User className="size-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Usuário</p>
-                <p className="font-medium text-primary">
-                  {userData?.nome || "Não disponível"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
-              <Mail className="size-5 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">E-mail</p>
-                <p className="font-medium text-primary">
-                  {userData?.email || "Não disponível"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filtros */}
       <Card>
@@ -324,8 +292,9 @@ export function MeusChamadosPage() {
                     <TableRow key={chamado.id} className="data-table-row group">
                       <TableCell className="py-4 text-left font-medium text-sm text-gray-700">
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-[#3ba5d8] mb-1">CH-{chamado.id.toString().padStart(3, '0')}</span>
-                          <span>{chamado.titulo}</span>
+                          <span className="text-sm font-bold text-[#1a3a5c] hover:text-[#3ba5d8] transition-colors cursor-pointer" onClick={() => abrirDetalhes(chamado)}>
+                            {chamado.titulo}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4 text-left">
@@ -559,7 +528,7 @@ export function MeusChamadosPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[#1a3a5c]">Cancelar chamado</AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja realmente cancelar o chamado {chamadoParaCancelar ? `CH-${String(chamadoParaCancelar.id).padStart(3,"0")}` : ""}? Esta ação fechará o chamado.
+              Deseja realmente cancelar este chamado? Esta ação fechará o chamado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { safeJson } from "@/lib/utils"
 
 export function DashboardFooter() {
   const [clientIp, setClientIp] = useState<string>("Carregando...")
@@ -11,8 +12,12 @@ export function DashboardFooter() {
     const fetchIp = async () => {
       try {
         const response = await fetch("https://api.ipify.org?format=json")
-        const data = await response.json()
-        setClientIp(data.ip)
+        const data = await safeJson<any>(response)
+        if (data && data.ip) {
+          setClientIp(data.ip)
+        } else {
+          setClientIp("Não disponível")
+        }
       } catch {
         setClientIp("Não disponível")
       }

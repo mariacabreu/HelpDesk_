@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Mail, Key, Lock, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import { safeJson } from "@/lib/utils"
 
 interface ForgotPasswordFormProps {
   onBack: () => void
@@ -48,8 +49,10 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: code.toUpperCase() })
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || "Código inválido")
+      if (!res.ok) {
+        const data = await safeJson<any>(res)
+        throw new Error(data?.detail || `Erro no servidor (${res.status})`)
+      }
       setStep("reset")
     } catch (err: any) {
       toast.error("Erro", { description: err.message })

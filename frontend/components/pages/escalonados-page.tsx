@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, RotateCcw, Eye, Clock, Loader2, RefreshCw, CheckCircle, Lock, MoreHorizontal, Shuffle, ArrowRight, AlertCircle, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { formatDate } from "@/lib/utils"
+import { formatDate, safeJson } from "@/lib/utils"
 
 const prioridadeColors: Record<string, string> = {
   baixa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -93,8 +93,8 @@ export function EscalonadosPage() {
       // Buscar chamados atribuídos a este técnico
       const res = await fetch(`/api/chamados/atribuido/${user.id}`)
       if (!res.ok) throw new Error("Erro ao buscar chamados")
-      const data = await res.json()
-      setChamados(data)
+      const data = await safeJson<any[]>(res)
+      setChamados(data || [])
     } catch (err) {
       console.error(err)
       toast({ title: "Erro", description: "Falha ao carregar chamados escalonados", variant: "destructive" })
@@ -110,8 +110,9 @@ export function EscalonadosPage() {
     // Se o usuário for N3, buscar outros técnicos N3 para seleção
     if (userData?.nivel === "n3" && userData?.empresa?.id) {
       fetch(`/api/funcionarios/empresa/${userData.empresa.id}`)
-        .then(res => res.json())
+        .then(res => safeJson<any[]>(res))
         .then(data => {
+          if (!data) return
           // Filtrar por nível n3 e remover o próprio usuário
           const n3s = data.filter((f: any) => f.nivel === "n3" && f.id !== userData.id)
           setTecnicosN3(n3s)
@@ -233,7 +234,6 @@ export function EscalonadosPage() {
                   <SelectItem value="baixa">Baixa</SelectItem>
                   <SelectItem value="media">Média</SelectItem>
                   <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="critica">Crítica</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -263,7 +263,6 @@ export function EscalonadosPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#1a3a5c] hover:bg-[#1a3a5c]">
-                  <TableHead className="text-white font-semibold w-[100px] text-center py-4">ID</TableHead>
                   <TableHead className="text-white font-semibold text-center py-4">Solicitante</TableHead>
                   <TableHead className="text-white font-semibold text-center py-4">Chamado</TableHead>
                   <TableHead className="text-white font-semibold text-center py-4">Prioridade</TableHead>
@@ -276,7 +275,6 @@ export function EscalonadosPage() {
                 {chamadosFiltrados.length > 0 ? (
                   chamadosFiltrados.map((c) => (
                     <TableRow key={c.id} className="data-table-row">
-                      <TableCell className="font-medium text-primary text-center border-border">CH-{c.id}</TableCell>
                       <TableCell className="text-center border-border">
                         <div className="flex flex-col items-center">
                           <div className="flex items-center gap-1">
@@ -358,8 +356,10 @@ export function EscalonadosPage() {
       <Dialog open={!!detalhesAberto} onOpenChange={(open) => !open && setDetalhesAberto(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado CH-{detalhesAberto?.id}</DialogTitle>
-            <DialogDescription>Informações completas do chamado escalonado</DialogDescription>
+            <DialogTitle className="text-[#1a3a5c]">Detalhes do Chamado</DialogTitle>
+            <DialogDescription>
+              Informações completas e histórico do chamado
+            </DialogDescription>
           </DialogHeader>
           
           {detalhesAberto && (
@@ -419,8 +419,8 @@ export function EscalonadosPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[#1a3a5c]">
-              <RefreshCw className="size-5 text-[#3ba5d8]" />
-              Escalonar Chamado CH-{chamadoParaEscalonar?.id}
+              <RefreshCw className="size-5 text-[#1a3a5c]" />
+              Escalonar Chamado
             </DialogTitle>
             <DialogDescription>
               Confirme o escalonamento deste chamado aberto por <span className="font-bold text-[#1a3a5c]">{chamadoParaEscalonar?.nome_solicitante || chamadoParaEscalonar?.solicitante_nome}</span> para o próximo nível de suporte.
@@ -437,12 +437,12 @@ export function EscalonadosPage() {
               </div>
               
               <div className="flex flex-col items-center">
-                <ArrowRight className="size-5 text-[#3ba5d8] animate-pulse" />
+                <ArrowRight className="size-5 text-[#1a3a5c] animate-pulse" />
               </div>
 
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Próximo Nível</span>
-                <Badge className="bg-[#3ba5d8] text-white border-none px-3 py-1">
+                <Badge className="bg-[#1a3a5c] text-white border-none px-3 py-1">
                   {(userData?.nivel?.toLowerCase() || "n1") === "n1" ? "N2" : "N3"}
                 </Badge>
               </div>
@@ -482,7 +482,7 @@ export function EscalonadosPage() {
             <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-3">
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 p-2 rounded-full shrink-0">
-                  <Shuffle className="size-4 text-[#3ba5d8]" />
+                  <Shuffle className="size-4 text-[#1a3a5c]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-[#1a3a5c]">
@@ -515,7 +515,7 @@ export function EscalonadosPage() {
               Cancelar
             </Button>
             <Button 
-              className="bg-[#3ba5d8] hover:bg-[#2a8fc2] text-white gap-2 px-6" 
+              className="bg-[#1a3a5c] hover:bg-[#1a3a5c]/90 text-white gap-2 px-6" 
               onClick={escalonarChamadoConfirmado}
               disabled={escalonando}
             >
@@ -533,7 +533,7 @@ export function EscalonadosPage() {
             <DialogTitle className="flex items-center gap-2 text-[#1a3a5c]">
               {confirmarAcao?.tipo === 'resolvido' && <CheckCircle className="size-5 text-green-600" />}
               {confirmarAcao?.tipo === 'fechado' && <Lock className="size-5 text-gray-600" />}
-              {confirmarAcao?.tipo === 'aberto' && <RefreshCw className="size-5 text-blue-600" />}
+              {confirmarAcao?.tipo === 'aberto' && <RefreshCw className="size-5 text-[#1a3a5c]" />}
               {confirmarAcao?.tipo === 'resolvido' ? 'Resolver Chamado' : confirmarAcao?.tipo === 'fechado' ? 'Encerrar Chamado' : 'Reabrir Chamado'}
             </DialogTitle>
             <DialogDescription>
@@ -547,7 +547,7 @@ export function EscalonadosPage() {
               Cancelar
             </Button>
             <Button 
-              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6`}
+              className={`${confirmarAcao?.tipo === 'resolvido' ? 'bg-green-600 hover:bg-green-700' : confirmarAcao?.tipo === 'fechado' ? 'bg-gray-700 hover:bg-gray-800' : 'bg-[#1a3a5c] hover:bg-[#1a3a5c]/90'} text-white px-6`}
               onClick={executarAcaoConfirmada}
               disabled={acaoLoading}
             >

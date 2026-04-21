@@ -72,6 +72,7 @@ export function EmployeeForm({ onBack }: EmployeeFormProps) {
                     <SelectItem value="n1">N1 - Primeiro Nível</SelectItem>
                     <SelectItem value="n2">N2 - Segundo Nível</SelectItem>
                     <SelectItem value="n3">N3 - Terceiro Nível</SelectItem>
+                    <SelectItem value="none">Não atribuído</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -83,12 +84,15 @@ export function EmployeeForm({ onBack }: EmployeeFormProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Desenvolvedor Full Stack">Desenvolvedor Full Stack</SelectItem>
+                    <SelectItem value="Desenvolvedor Frontend">Desenvolvedor Frontend</SelectItem>
+                    <SelectItem value="Desenvolvedor Backend">Desenvolvedor Backend</SelectItem>
                     <SelectItem value="QA / Testes">QA / Testes</SelectItem>
                     <SelectItem value="Administrador de banco de dados">Administrador de banco de dados</SelectItem>
                     <SelectItem value="Backup">Backup</SelectItem>
                     <SelectItem value="Administrador de rede">Administrador de rede</SelectItem>
                     <SelectItem value="Manutenção de computadores">Manutenção de computadores</SelectItem>
                     <SelectItem value="Rede física / cabeamento">Rede física / cabeamento</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

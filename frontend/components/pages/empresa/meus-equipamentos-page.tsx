@@ -9,10 +9,20 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Eye, ClipboardList, Pencil, XCircle, Search, Filter, Monitor, Laptop, Printer, Server, RotateCcw, CheckCircle, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
+import { formatDate, safeJson } from "@/lib/utils"
 
 
 const tipoIcon = {
@@ -66,6 +76,8 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
   const [modalDetalhes, setModalDetalhes] = useState(false)
   const [modalCadastro, setModalCadastro] = useState(false)
   const [modalEditar, setModalEditar] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [equipamentoParaExcluir, setEquipamentoParaExcluir] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [cadastro, setCadastro] = useState({
     nome: "",
@@ -74,6 +86,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     marca: "",
     modelo: "",
     numero_serie: "",
+    so: "",
   })
   const [editForm, setEditForm] = useState({
     id: null,
@@ -84,6 +97,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     modelo: "",
     numero_serie: "",
     status: "",
+    so: "",
   })
   const { toast } = useToast()
 
@@ -97,8 +111,8 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
       if (empresaId) {
         try {
           const res = await fetch(`/api/equipamentos/${empresaId}`)
-          const data = await res.json()
-          setEquipamentos(data)
+          const data = await safeJson<any[]>(res)
+          setEquipamentos(data || [])
         } catch (err) {
           console.error("Erro ao buscar equipamentos:", err)
         } finally {
@@ -127,6 +141,7 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
       modelo: eq.modelo || "",
       numero_serie: eq.numero_serie || "",
       status: eq.status || "ativo",
+      so: eq.especificacoes?.so || "",
     })
     setModalEditar(true)
   }
@@ -142,7 +157,13 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
       const res = await fetch(`/api/equipamentos/${editForm.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          especificacoes: {
+            ...equipamentos.find(e => e.id === editForm.id)?.especificacoes,
+            so: editForm.so
+          }
+        }),
       })
 
       if (!res.ok) throw new Error("Erro ao atualizar equipamento")
@@ -157,11 +178,16 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     }
   }
 
-  const handleExcluir = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir permanentemente este equipamento?")) return
+  const handleExcluir = (id: number) => {
+    setEquipamentoParaExcluir(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmarExclusao = async () => {
+    if (!equipamentoParaExcluir) return
 
     try {
-      const res = await fetch(`/api/equipamentos/${id}`, {
+      const res = await fetch(`/api/equipamentos/${equipamentoParaExcluir}`, {
         method: "DELETE",
       })
 
@@ -171,6 +197,9 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
       fetchEquipamentos()
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" as any })
+    } finally {
+      setConfirmDeleteOpen(false)
+      setEquipamentoParaExcluir(null)
     }
   }
 
@@ -196,8 +225,8 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     try {
       const res = await fetch(`/api/equipamentos/${id}/backups`)
       if (res.ok) {
-        const data = await res.json()
-        setBackups(data)
+        const data = await safeJson<any[]>(res)
+        setBackups(data || [])
       }
     } catch (err) {
       console.error("Erro ao buscar backups:", err)
@@ -229,16 +258,17 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
     try {
       const res = await fetch(`/api/equipamentos/${equipamento.id}/chamados`)
       if (res.ok) {
-        const data = await res.json()
-        setEquipamentoSelecionado((prev: any) => ({
-          ...prev,
-          historicoChamados: data.map((c: any) => ({
-            id: `CH-${String(c.id).padStart(3, "0")}`,
-            titulo: c.titulo,
-            data: new Date(c.data_abertura).toLocaleDateString("pt-BR"),
-            status: c.status
+        const data = await safeJson<any[]>(res)
+        if (data) {
+          setEquipamentoSelecionado((prev: any) => ({
+            ...prev,
+            historicoChamados: data.map((c: any) => ({
+              titulo: c.titulo,
+              data: new Date(c.data_abertura).toLocaleDateString("pt-BR"),
+              status: c.status
+            }))
           }))
-        }))
+        }
       }
     } catch (err) {
       console.error("Erro ao buscar histórico do equipamento:", err)
@@ -266,21 +296,24 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
           tipo: cadastro.tipo || null,
           marca: cadastro.marca.trim() || null,
           modelo: cadastro.modelo.trim() || null,
-          numero_serie: cadastro.numero_serie.trim() || null,
+         numero_serie: cadastro.numero_serie.trim() || null,
           status: "ativo",
+          especificacoes: {
+            so: cadastro.so
+          }
         }),
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error(err?.detail || "Falha ao cadastrar equipamento")
+        const err = await safeJson<any>(res)
+        throw new Error(err?.detail || `Falha ao cadastrar equipamento (${res.status})`)
       }
-      const novo = await res.json()
+      const novo = await safeJson<any>(res)
+      if (!novo) throw new Error("Resposta inválida ao cadastrar equipamento")
+      
       toast({ title: "Equipamento cadastrado", description: `Patrimônio ${novo.patrimonio}` })
       setModalCadastro(false)
-      setCadastro({ nome: "", tipo: "", patrimonio: "", marca: "", modelo: "", numero_serie: "" })
-      const r = await fetch(`/api/equipamentos/${userData.empresa.id}`)
-      const data = await r.json()
-      setEquipamentos(data)
+      setCadastro({ nome: "", tipo: "", patrimonio: "", marca: "", modelo: "", numero_serie: "", so: "" })
+      fetchEquipamentos()
     } catch (e: any) {
       toast({ title: "Erro", description: e.message || "Erro ao cadastrar equipamento.", variant: "destructive" as any })
     } finally {
@@ -408,10 +441,15 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                             <div className="p-2 bg-primary/10 rounded-lg">
                               <Icon className="size-4 text-primary" />
                             </div>
-                            <span className="font-medium text-foreground">{eq.nome}</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{eq.nome}</span>
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold">{eq.especificacoes?.so || "N/A"}</span>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize border-border text-left text-sm font-medium text-gray-700">{eq.tipo}</TableCell>
+                        <TableCell className="border-border text-left text-sm font-medium text-gray-700 capitalize">
+                          {eq.tipo}
+                        </TableCell>
                         <TableCell className="font-bold border-border text-left text-xs text-[#1a3a5c] tracking-tight">{eq.patrimonio}</TableCell>
                         <TableCell className="border-border text-left text-sm font-medium text-gray-700">{eq.modelo}</TableCell>
                         <TableCell className="border-border text-left">
@@ -522,12 +560,19 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                 <div className="border-t pt-4">
                   <p className="text-sm font-medium mb-3">Especificações Técnicas</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(equipamentoSelecionado.especificacoes || {}).map(([key, value]) => (
-                      <div key={key} className="p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                        <p className="text-sm font-medium">{String(value)}</p>
-                      </div>
-                    ))}
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-muted-foreground">Sistema Operacional</p>
+                      <p className="text-sm font-medium">{equipamentoSelecionado.especificacoes?.so || "Não definido"}</p>
+                    </div>
+                    {Object.entries(equipamentoSelecionado.especificacoes || {}).map(([key, value]) => {
+                      if (key === 'so') return null;
+                      return (
+                        <div key={key} className="p-2 bg-gray-50 rounded">
+                          <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                          <p className="text-sm font-medium">{String(value)}</p>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </TabsContent>
@@ -693,6 +738,19 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                 onChange={(e) => setCadastro({ ...cadastro, numero_serie: e.target.value })}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Sistema Operacional</Label>
+              <Select value={cadastro.so} onValueChange={(v) => setCadastro({ ...cadastro, so: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o SO" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Windows">Windows</SelectItem>
+                  <SelectItem value="Linux">Linux</SelectItem>
+                  <SelectItem value="Mac">Mac</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <DialogFooter>
@@ -777,18 +835,31 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
                 />
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                <Label>Sistema Operacional</Label>
+                <Select value={editForm.so} onValueChange={(v) => setEditForm({ ...editForm, so: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder="Selecione o SO" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="manutencao">Manutenção</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
+                    <SelectItem value="Windows">Windows</SelectItem>
+                    <SelectItem value="Linux">Linux</SelectItem>
+                    <SelectItem value="Mac">Mac</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="manutencao">Manutenção</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
@@ -802,6 +873,29 @@ export function MeusEquipamentosPage({ onOpenTicket }: MeusEquipamentosPageProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#1a3a5c]">Tem certeza que deseja excluir?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não poderá ser desfeita. O equipamento será removido permanentemente do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEquipamentoParaExcluir(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmarExclusao}
+              className="bg-[#1a3a5c] hover:bg-[#1a3a5c]/90 text-white"
+            >
+              Excluir Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

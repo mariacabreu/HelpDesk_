@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
-import { formatDateShort, formatDate } from "@/lib/utils"
+import { formatDateShort, formatDate, safeJson } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -68,14 +68,15 @@ export function DashboardEmpresaPage() {
       if (empresaId) {
         // Buscar estatísticas
         fetch(`/api/stats/empresa/${empresaId}`)
-          .then(res => res.json())
-          .then(data => setDynamicStats(data))
+          .then(res => safeJson<any>(res))
+          .then(data => data && setDynamicStats(data))
           .catch(err => console.error("Erro ao buscar estatísticas:", err))
           
         // Buscar chamados recentes
         fetch(`/api/chamados/empresa/${empresaId}`)
-          .then(res => res.json())
+          .then(res => safeJson<any[]>(res))
           .then(data => {
+            if (!data) return
             // Ordenar por data de abertura (mais recente primeiro) e pegar os 5 primeiros
             const sorted = data.sort((a: any, b: any) => 
               new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime()
@@ -87,7 +88,7 @@ export function DashboardEmpresaPage() {
 
         // Buscar equipamentos para o mapa de nomes
         fetch(`/api/equipamentos/${empresaId}`)
-          .then(res => res.json())
+          .then(res => safeJson<any[]>(res))
           .then((data) => {
             const map: Record<string, { nome: string; patrimonio?: string }> = {}
             ;(data || []).forEach((e: any) => {
@@ -108,8 +109,8 @@ export function DashboardEmpresaPage() {
     if (userData?.empresa?.id) {
       // Buscar estatísticas de backup do sistema completo
       fetch(`/api/empresas/${userData.empresa.id}/system-backup-stats`)
-        .then(res => res.json())
-        .then(data => setBackupStats(data))
+        .then(res => safeJson<any>(res))
+        .then(data => data && setBackupStats(data))
         .catch(err => console.error("Erro ao buscar stats de backup:", err))
     }
   }, [userData])
@@ -146,14 +147,6 @@ export function DashboardEmpresaPage() {
       icon: CheckCircle2,
       color: "text-green-600",
       bgColor: "bg-green-100",
-    },
-    {
-      title: "Último Backup",
-      value: backupStats.ultimo_data ? formatDateShort(backupStats.ultimo_data) : "Nenhum",
-      description: "Data da última execução",
-      icon: Calendar,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
     },
   ]
 

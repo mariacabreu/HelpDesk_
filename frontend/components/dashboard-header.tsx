@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { useToast } from "@/hooks/use-toast"
+import { safeJson } from "@/lib/utils"
 
 interface DashboardHeaderProps {
   userId?: number
@@ -72,9 +74,11 @@ export function DashboardHeader({
     try {
       const res = await fetch(`/api/notificacoes/${userId}`)
       if (res.ok) {
-        const data = await res.json()
-        setNotifications(data)
-        setNotificationCount(data.length)
+        const data = await safeJson<any[]>(res)
+        if (data) {
+          setNotifications(data)
+          setNotificationCount(data.length)
+        }
       }
     } catch (err) {
       console.error("Erro ao buscar notificações:", err)

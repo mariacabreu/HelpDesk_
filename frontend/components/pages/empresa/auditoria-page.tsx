@@ -10,13 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDate } from "@/lib/utils"
+import { formatDate, safeJson } from "@/lib/utils"
 import { 
   Search, Filter, Shield, Download, Eye, User, FileText, 
   Clock, ArrowRight, Database, Settings, Lock, PlusCircle, Pencil, Trash2, Play, RefreshCw, RotateCcw, ShieldCheck,
   Info, CheckCircle, AlertTriangle, AlertCircle
 } from "lucide-react"
-import jsPDF from "jspdf"
+import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 
 const moduloIcons = {
@@ -62,8 +62,8 @@ export function AuditoriaPage() {
       // Buscar logs reais se houver empresa
       if (user.empresa?.id) {
         fetch(`/api/logs?empresa_id=${user.empresa.id}`)
-          .then(res => res.json())
-          .then(data => setLogs(data))
+          .then(res => safeJson<any[]>(res))
+          .then(data => setLogs(data || []))
           .catch(err => console.error("Erro ao buscar logs para auditoria:", err))
           .finally(() => setLoading(false))
       } else {
@@ -91,8 +91,8 @@ export function AuditoriaPage() {
     if (userData?.empresa?.id) {
       setLoading(true)
       fetch(`/api/logs?empresa_id=${userData.empresa.id}`)
-        .then(res => res.json())
-        .then(data => setLogs(data))
+        .then(res => safeJson<any[]>(res))
+        .then(data => setLogs(data || []))
         .finally(() => setLoading(false))
     }
   }
@@ -384,27 +384,39 @@ export function AuditoriaPage() {
                   <p className="text-sm font-medium">{registroSelecionado.modulo}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipo de Ação</p>
-                  <Badge className={acaoConfig[registroSelecionado.acao as keyof typeof acaoConfig]?.cor}>
-                    {registroSelecionado.acao}
-                  </Badge>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ação Realizada</p>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-100 whitespace-normal h-auto text-left py-1 px-2 font-semibold">
+                      {registroSelecionado.acao.split(':')[0]}
+                    </Badge>
+                  </div>
                 </div>
               </div>
               
               <div className="space-y-1 pt-4 border-t">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Usuário Responsável</p>
-                <div className="flex items-center gap-2">
-                  <div className="size-8 rounded-full bg-[#7ac142]/10 flex items-center justify-center">
-                    <User className="size-4 text-[#7ac142]" />
+                <div className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-lg border border-gray-100/50 w-fit pr-4">
+                  <div className="size-8 rounded-full bg-[#7ac142] flex items-center justify-center shadow-sm">
+                    <User className="size-4 text-white" />
                   </div>
-                  <p className="text-sm font-bold text-[#1a3a5c]">{registroSelecionado.usuario}</p>
+                  <div className="flex flex-col">
+                    <p className="text-sm font-bold text-[#1a3a5c] leading-tight">{registroSelecionado.usuario_nome || "Sistema"}</p>
+                    <p className="text-[10px] text-muted-foreground">ID: {registroSelecionado.usuario_id || "N/A"}</p>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-1 pt-4 border-t">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Descrição do Evento</p>
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <p className="text-sm text-gray-700 leading-relaxed">{registroSelecionado.descricao}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Descrição Detalhada</p>
+                <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="mt-1">
+                      <div className="size-2 rounded-full bg-[#3ba5d8]" />
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                      {registroSelecionado.acao}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

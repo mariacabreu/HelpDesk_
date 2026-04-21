@@ -50,14 +50,14 @@ const menuItems = [
     icon: Monitor,
     id: "meus-equipamentos",
   },
+]
+
+const adminItems = [
   {
     title: "Funcionários",
     icon: Users,
     id: "gestao-funcionarios",
   },
-]
-
-const adminItems = [
   {
     title: "Backup",
     icon: Database,

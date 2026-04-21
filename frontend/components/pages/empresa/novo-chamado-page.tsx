@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Building2, User, Mail, Upload, Clock, AlertTriangle, X, Loader2, Shuffle, UserCog } from "lucide-react"
+import { safeJson } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,14 +61,14 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       // Buscar equipamentos da empresa
       if (user.empresa?.id) {
         fetch(`/api/equipamentos/${user.empresa.id}`)
-          .then(res => res.json())
-          .then(data => setEquipamentos(data))
+          .then(res => safeJson<any[]>(res))
+          .then(data => setEquipamentos(data || []))
           .catch(err => console.error("Erro ao buscar equipamentos:", err))
         
         // Buscar todos os funcionários da empresa para filtrar por nível depois
         fetch(`/api/funcionarios/empresa/${user.empresa.id}`)
-          .then(res => res.json())
-          .then(data => setFuncionariosNivel(data))
+          .then(res => safeJson<any[]>(res))
+          .then(data => setFuncionariosNivel(data || []))
           .catch(err => console.error("Erro ao buscar funcionários:", err))
 
         // Verificar se há um equipamento pendente para seleção automática
@@ -136,20 +137,25 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await safeJson<any>(response)
         console.error("Erro detalhado do backend:", errorData)
         
-        let errorMessage = "Erro ao abrir chamado"
-        if (Array.isArray(errorData.detail)) {
-          errorMessage = errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join('\n')
-        } else if (typeof errorData.detail === 'string') {
-          errorMessage = errorData.detail
+        let errorMessage = `Erro no servidor (${response.status})`
+        if (errorData) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join('\n')
+          } else if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail
+          }
         }
         
         throw new Error(errorMessage)
       }
 
-      const data = await response.json()
+      const data = await safeJson<any>(response)
+      if (!data) {
+        throw new Error("Resposta inválida do servidor")
+      }
       const criadoId = data?.id
       
       // Fazer upload dos anexos se houver
@@ -507,7 +513,7 @@ export function NovoChamadoPage({ onTicketCreated }: NovoChamadoPageProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[#1a3a5c]">Chamado aberto com sucesso</AlertDialogTitle>
             <AlertDialogDescription>
-              Seu chamado {novoChamadoId ? `CH-${String(novoChamadoId).padStart(3, "0")}` : ""} foi registrado e já está na fila de atendimento.
+              Seu chamado foi registrado e já está na fila de atendimento.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
