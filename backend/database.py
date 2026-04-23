@@ -224,7 +224,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Suporte para MySQL (Railway) ou SQLite (Local)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Log de depuração (Remover em produção se contiver dados sensíveis)
 if DATABASE_URL:
+    # Mostra a URL sem a senha para debug
+    parts = DATABASE_URL.split('@')
+    if len(parts) > 1:
+        print(f"DEBUG: Conectando ao host: {parts[-1]}")
+    else:
+        print(f"DEBUG: DATABASE_URL detectada, mas formato parece inválido.")
+
+if DATABASE_URL:
+    # Limpa possíveis espaços ou quebras de linha que quebram o parse
+    DATABASE_URL = DATABASE_URL.strip()
+    
     # Garante que a URL use o driver pymysql para MySQL
     if DATABASE_URL.startswith("mysql://"):
         DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
