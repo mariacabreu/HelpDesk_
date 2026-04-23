@@ -11,7 +11,8 @@ const nextConfig = {
     appIsrStatus: false,
   },
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+    // URL do backend no Render fornecida pelo usuário
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://swiftdesk-nvsl.onrender.com';
     return [
       {
         source: '/api/:path*',
