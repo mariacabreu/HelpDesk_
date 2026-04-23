@@ -221,21 +221,16 @@ class PasswordRecovery(Base):
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Suporte para PostgreSQL (Render/Supabase), MySQL (Railway) ou SQLite (Local)
+# Suporte para MySQL (Railway) ou SQLite (Local)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    if DATABASE_URL.startswith("postgres://"):
-        # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        # Adicionar sslmode=require diretamente na URL para evitar erros de driver
-        if "?" in DATABASE_URL:
-            DATABASE_URL += "&sslmode=require"
-        else:
-            DATABASE_URL += "?sslmode=require"
-    elif DATABASE_URL.startswith("mysql://"):
-        # SQLAlchemy exige o driver explicitamente (mysql+pymysql)
+    # Garante que a URL use o driver pymysql para MySQL
+    if DATABASE_URL.startswith("mysql://"):
         DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+    # Remove qualquer lógica de Postgres/Supabase que possa causar conflito
+    elif DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://"):
+        print("AVISO: URL de PostgreSQL detectada, mas o projeto foi configurado para MySQL.")
 
 if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
@@ -245,21 +240,15 @@ engine_args = {}
 if "sqlite" in DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
 elif "mysql" in DATABASE_URL:
-    # Para MySQL, otimizar pool e timeout
+    # Configurações otimizadas para MySQL no Railway
     engine_args["pool_size"] = 5
     engine_args["max_overflow"] = 10
     engine_args["pool_timeout"] = 30
-    # Algumas hospedagens exigem SSL para MySQL também
-    # engine_args["connect_args"] = {"ssl": {"reject_unauthorized": False}} 
-else:
-    # Para PostgreSQL no Render/Supabase, otimizar pool
-    engine_args["pool_size"] = 5
-    engine_args["max_overflow"] = 10
+    engine_args["pool_recycle"] = 3600
+    engine_args["pool_pre_ping"] = True
 
 engine = create_engine(
     DATABASE_URL,
-    pool_recycle=3600,
-    pool_pre_ping=True,
     **engine_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
