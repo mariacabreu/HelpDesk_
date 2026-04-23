@@ -183,7 +183,7 @@ def extract_password_from_cpf(cpf: str):
     # Pega os 6 primeiros
     return clean_cpf[:6]
 
-def send_real_email(to_email: str, login: str, senha: str):
+def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
     import os
     from email.mime.text import MIMEText
@@ -201,7 +201,7 @@ def send_real_email(to_email: str, login: str, senha: str):
     msg["Subject"] = "Boas-vindas e dados de acesso ao sistema"
 
     body = f"""
-Prezado(a) colaborador(a),
+Prezado(a) {nome_funcionario},
 
 Seja bem-vindo(a) à nossa equipe! É com grande satisfação que recebemos você em nosso time.
 
@@ -215,7 +215,7 @@ Por questões de segurança, orientamos que a senha seja alterada no primeiro ac
 Desejamos muito sucesso nessa nova jornada e nos colocamos à disposição para qualquer suporte necessário.
 
 Atenciosamente,
-Equipe de TI / Recursos Humanos
+{nome_empresa}
 """
 
     msg.attach(MIMEText(body, "plain", "utf-8" ))
@@ -1139,9 +1139,19 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
         db.commit()
         db.refresh(db_funcionario)
         
+        # Buscar o nome da empresa para o e-mail
+        empresa = db.query(Empresa).filter(Empresa.id == db_funcionario.empresa_id).first()
+        nome_empresa = (empresa.nome_fantasia or empresa.razao_social) if empresa else "Equipe de Suporte"
+        
         # Chamada direta sem BackgroundTasks para teste
         try:
-            email_ok = send_real_email(db_funcionario.email, db_funcionario.login, senha_inicial)
+            email_ok = send_real_email(
+                db_funcionario.email, 
+                db_funcionario.login, 
+                senha_inicial, 
+                db_funcionario.nome, 
+                nome_empresa
+            )
         except Exception as e:
             print(f"Erro ao enviar email: {e}")
             email_ok = False
