@@ -226,6 +226,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    # Adicionar sslmode=require diretamente na URL para evitar erros de driver
+    if "?" in DATABASE_URL:
+        DATABASE_URL += "&sslmode=require"
+    else:
+        DATABASE_URL += "?sslmode=require"
 
 if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
@@ -235,8 +240,7 @@ engine_args = {}
 if "sqlite" in DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
 else:
-    # Para PostgreSQL no Render/Supabase, otimizar pool e exigir SSL
-    engine_args["connect_args"] = {"sslmode": "require"}
+    # Para PostgreSQL no Render/Supabase, otimizar pool
     engine_args["pool_size"] = 5
     engine_args["max_overflow"] = 10
 
