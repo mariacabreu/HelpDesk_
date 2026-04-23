@@ -235,7 +235,8 @@ engine_args = {}
 if "sqlite" in DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
 else:
-    # Para PostgreSQL no Render/Supabase, otimizar pool
+    # Para PostgreSQL no Render/Supabase, otimizar pool e exigir SSL
+    engine_args["connect_args"] = {"sslmode": "require"}
     engine_args["pool_size"] = 5
     engine_args["max_overflow"] = 10
 

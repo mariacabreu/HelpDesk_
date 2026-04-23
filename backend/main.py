@@ -4,8 +4,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema, init_db
 from datetime import datetime, timedelta
+
+# Inicializar banco de dados (criar tabelas se não existirem)
+init_db()
+
 import shutil
 import random
 import string
