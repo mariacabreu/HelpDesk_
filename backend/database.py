@@ -220,12 +220,30 @@ class PasswordRecovery(Base):
 # Configuração do Banco de Dados
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
+
+# Suporte para PostgreSQL (Render/Supabase) ou SQLite (Local)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
+
+# Argumentos extras para o engine
+engine_args = {}
+if "sqlite" in DATABASE_URL:
+    engine_args["connect_args"] = {"check_same_thread": False}
+else:
+    # Para PostgreSQL no Render/Supabase, otimizar pool
+    engine_args["pool_size"] = 5
+    engine_args["max_overflow"] = 10
+
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}, # Necessário para SQLite
     pool_recycle=3600,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    **engine_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

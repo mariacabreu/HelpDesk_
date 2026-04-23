@@ -11,10 +11,11 @@ const nextConfig = {
     appIsrStatus: false,
   },
   async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8001/:path*',
+        destination: `${backendUrl}/:path*`,
       },
     ]
   },
