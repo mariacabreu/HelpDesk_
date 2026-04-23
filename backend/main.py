@@ -1143,6 +1143,10 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
         empresa = db.query(Empresa).filter(Empresa.id == db_funcionario.empresa_id).first()
         nome_empresa = (empresa.nome_fantasia or empresa.razao_social) if empresa else "Equipe de Suporte"
         
+        # Limpar nome da empresa se contiver um e-mail (remover do @ em diante)
+        if "@" in nome_empresa:
+            nome_empresa = nome_empresa.split("@")[0]
+        
         # Chamada direta sem BackgroundTasks para teste
         try:
             email_ok = send_real_email(
