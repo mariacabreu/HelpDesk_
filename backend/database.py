@@ -221,16 +221,21 @@ class PasswordRecovery(Base):
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Suporte para PostgreSQL (Render/Supabase) ou SQLite (Local)
+# Suporte para PostgreSQL (Render/Supabase), MySQL (Railway) ou SQLite (Local)
 DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    # Adicionar sslmode=require diretamente na URL para evitar erros de driver
-    if "?" in DATABASE_URL:
-        DATABASE_URL += "&sslmode=require"
-    else:
-        DATABASE_URL += "?sslmode=require"
+
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        # Adicionar sslmode=require diretamente na URL para evitar erros de driver
+        if "?" in DATABASE_URL:
+            DATABASE_URL += "&sslmode=require"
+        else:
+            DATABASE_URL += "?sslmode=require"
+    elif DATABASE_URL.startswith("mysql://"):
+        # SQLAlchemy exige o driver explicitamente (mysql+pymysql)
+        DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
 if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
@@ -239,6 +244,11 @@ if not DATABASE_URL:
 engine_args = {}
 if "sqlite" in DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
+elif "mysql" in DATABASE_URL:
+    # Para MySQL, otimizar pool e timeout
+    engine_args["pool_size"] = 5
+    engine_args["max_overflow"] = 10
+    engine_args["pool_timeout"] = 30
 else:
     # Para PostgreSQL no Render/Supabase, otimizar pool
     engine_args["pool_size"] = 5
