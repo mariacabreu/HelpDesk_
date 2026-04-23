@@ -224,12 +224,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Suporte para PostgreSQL (Render/Supabase), MySQL (Railway) ou SQLite (Local)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# DEBUG: Verificar URL carregada (Remover em produção se contiver senhas sensíveis)
-if DATABASE_URL:
-    print(f"DEBUG: DATABASE_URL detectada (escondendo senha): {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL}")
-else:
-    print("DEBUG: DATABASE_URL não encontrada, usando SQLite local.")
-
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         # Render fornece postgres:// mas o SQLAlchemy exige postgresql://
@@ -242,10 +236,6 @@ if DATABASE_URL:
     elif DATABASE_URL.startswith("mysql://"):
         # SQLAlchemy exige o driver explicitamente (mysql+pymysql)
         DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
-    elif DATABASE_URL.startswith("mysql+pymysql://"):
-        pass # Já está no formato correto
-    else:
-        print(f"DEBUG: Protocolo de banco de dados não reconhecido na URL: {DATABASE_URL.split(':')[0]}")
 
 if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
