@@ -20,6 +20,10 @@ load_dotenv(override=True)
 
 app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "SwiftDesk API is running"}
+
 # Configuração de CORS para permitir o frontend no Vercel
 app.add_middleware(
     CORSMiddleware,
