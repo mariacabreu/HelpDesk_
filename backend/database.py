@@ -254,8 +254,14 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
-    print("Banco de dados inicializado com sucesso!")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Banco de dados inicializado com sucesso!")
+    except Exception as e:
+        print(f"❌ ERRO CRÍTICO NO BANCO DE DADOS: {str(e)}")
+        # Não levantamos a exceção aqui para evitar que o gunicorn morra no boot
+        # Isso permite ver o erro nos logs do Render com o app "rodando"
+        pass
 
 if __name__ == "__main__":
     init_db()
