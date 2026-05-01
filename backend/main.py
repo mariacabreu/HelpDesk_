@@ -219,10 +219,15 @@ def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str
     from email.mime.multipart import MIMEMultipart
 
     smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT"))
+    smtp_port = int(os.getenv("SMTP_PORT") or 587)
     smtp_user = os.getenv("SMTP_USER")
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_from_name = os.getenv("SMTP_FROM_NAME")
+
+    # Limpeza rigorosa das variáveis de ambiente
+    if smtp_server: smtp_server = smtp_server.strip()
+    if smtp_user: smtp_user = smtp_user.strip()
+    if smtp_password: smtp_password = smtp_password.strip()
 
     msg = MIMEMultipart()
     msg["From"] = f"{smtp_from_name} <{smtp_user}>"
@@ -257,16 +262,13 @@ Atenciosamente,
         print(f"SMTP_SERVER: {smtp_server}")
         print(f"SMTP_PORT: {smtp_port}")
         print(f"SMTP_USER: {smtp_user}")
-        print(f"SMTP_PASSWORD: {repr(smtp_password)}")
         print(f"DESTINATARIO: {to_email}")
-        # A senha não será printada por segurança, mas verificaremos se existe
-        print(f"SMTP_PASS configurado: {'Sim' if smtp_password else 'Não'}")
         
-        # Usar SMTP_SSL para a porta 465, ou SMTP + starttls para 587
+        # Timeout de 15 segundos para evitar que o worker do Render trave
         if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port, local_hostname="localhost")
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, local_hostname="localhost", timeout=15)
         else:
-            server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
+            server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost", timeout=15)
             server.set_debuglevel(1)
             server.ehlo()
             if smtp_port == 587:
@@ -279,7 +281,7 @@ Atenciosamente,
         print(f"E-mail enviado com sucesso para: {to_email}")
         return True
     except Exception as e:
-        print("Erro detalhado ao enviar:", e)
+        print(f"ERRO SMTP DETALHADO: {str(e)}")
         return False
 
 def send_recovery_email(to_email: str, code: str):
