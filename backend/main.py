@@ -213,6 +213,44 @@ def extract_password_from_cpf(cpf: str):
     # Pega os 6 primeiros
     return clean_cpf[:6]
 
+@app.get("/debug-email")
+def debug_email_direct(email: str = "mjoaooliveira7891@gmail.com"):
+    import smtplib
+    import os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    # Pegar exatamente o que está no ambiente
+    u = (os.environ.get("SMTP_USER") or "").strip()
+    p = (os.environ.get("SMTP_PASSWORD") or "").strip()
+    s = (os.environ.get("SMTP_SERVER") or "smtp.gmail.com").strip()
+    port = int(os.environ.get("SMTP_PORT") or "465")
+
+    print(f"DEBUG DIRETO: Tentando enviar para {email} via {s}:{port} com user {u}")
+
+    try:
+        if port == 465:
+            server = smtplib.SMTP_SSL(s, port, timeout=15)
+        else:
+            server = smtplib.SMTP(s, port, timeout=15)
+            server.starttls()
+        
+        server.set_debuglevel(1)
+        server.login(u, p)
+        
+        msg = MIMEMultipart()
+        msg["Subject"] = "SwiftDesk - TESTE DE CONEXAO DIRETA"
+        msg["From"] = u # Gmail EXIGE que seja igual ao user
+        msg["To"] = email
+        msg.attach(MIMEText("Se voce recebeu isso, a conexao SMTP esta funcionando 100%.", "plain"))
+        
+        server.sendmail(u, email, msg.as_string())
+        server.quit()
+        return {"status": "sucesso", "msg": f"E-mail enviado para {email}"}
+    except Exception as e:
+        print(f"ERRO NO DEBUG EMAIL: {repr(e)}")
+        return {"status": "erro", "detalhe": str(e)}
+
 async def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
     import os
