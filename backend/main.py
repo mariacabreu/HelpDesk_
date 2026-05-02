@@ -219,14 +219,19 @@ def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
-    # Forçar recarregamento das envs
-    resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
-    smtp_port_raw = os.environ.get("SMTP_PORT", "587").strip()
+    # Priorizar variáveis do Render/Env, mas ter fallbacks seguros
+    resend_api_key = (os.environ.get("RESEND_API_KEY") or "").strip()
+    smtp_server = (os.environ.get("SMTP_SERVER") or "smtp.gmail.com").strip()
+    smtp_port_raw = (os.environ.get("SMTP_PORT") or "587").strip()
     smtp_port = int(smtp_port_raw)
-    smtp_user = os.environ.get("SMTP_USER", "").strip()
-    smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
-    smtp_from_name = os.environ.get("SMTP_FROM_NAME", "SwiftDesk Support").strip()
+    smtp_user = (os.environ.get("SMTP_USER") or "").strip()
+    smtp_password = (os.environ.get("SMTP_PASSWORD") or "").strip()
+    smtp_from_name = (os.environ.get("SMTP_FROM_NAME") or "SwiftDesk Support").strip()
+
+    # Se não houver configuração de e-mail, apenas logar e retornar (evita travar o sistema local)
+    if not resend_api_key and not smtp_user:
+        print("AVISO: Nenhuma configuração de e-mail (Resend ou SMTP) encontrada. E-mail não será enviado.")
+        return False
 
     body = f"""
 Prezado(a) {nome_funcionario},
@@ -246,40 +251,30 @@ Atenciosamente,
 {nome_empresa}
 """
 
-    # 1. Tentar via Resend API (Opção Profissional - 100% garantido no Render)
+    # 1. Tentar via Resend API (Prioridade: Mais estável em Deploy)
     if resend_api_key:
         try:
-            print(f"DEBUG API: Tentando envio via Resend para {to_email}")
+            print(f"DEBUG API: Tentando Resend para {to_email}")
             resp = requests.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_api_key}"},
                 json={
-                    "from": "SwiftDesk <onboarding@resend.dev>",
+                    "from": f"{smtp_from_name} <onboarding@resend.dev>",
                     "to": [to_email],
-                    "subject": "Boas-vindas e dados de acesso",
+                    "subject": "Dados de Acesso - SwiftDesk",
                     "html": body.replace("\n", "<br>")
                 },
-                timeout=15
+                timeout=10
             )
             if resp.status_code in [200, 201, 202]:
                 print("DEBUG API: E-mail enviado com sucesso via Resend!")
                 return True
-            else:
-                print(f"ERRO API RESEND: {resp.status_code} - {resp.text}")
         except Exception as e:
-            print(f"FALHA NA API RESEND: {repr(e)}")
+            print(f"FALHA RESEND: {repr(e)}")
 
-    # 2. Fallback para SMTP (O que já estávamos tentando)
-    msg = MIMEMultipart()
-    msg["From"] = f"{smtp_from_name} <{smtp_user}>"
-    msg["To"] = to_email
-    msg["Subject"] = "Boas-vindas e dados de acesso ao sistema"
-    msg.attach(MIMEText(body, "plain", "utf-8" ))
-
+    # 2. Fallback para SMTP (Porta 465 ou 587)
     try:
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
-        
-        # Timeout reduzido para falhar rápido se houver bloqueio de rede
         if smtp_port == 465:
             server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
             server.set_debuglevel(1)
@@ -291,9 +286,15 @@ Atenciosamente,
             server.ehlo()
         
         server.login(smtp_user, smtp_password)
+        
+        msg = MIMEMultipart()
+        msg["From"] = f"{smtp_from_name} <{smtp_user}>"
+        msg["To"] = to_email
+        msg["Subject"] = "Dados de Acesso - SwiftDesk"
+        msg.attach(MIMEText(body, "plain", "utf-8" ))
+        
         server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
-        
         print(f"DEBUG SMTP: E-mail enviado com sucesso para {to_email}")
         return True
     except Exception as e:

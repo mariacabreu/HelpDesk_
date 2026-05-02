@@ -219,38 +219,35 @@ class PasswordRecovery(Base):
 
 # Configuração do Banco de Dados
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from dotenv import load_dotenv
 
-# Suporte para MySQL (Railway) ou SQLite (Local)
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Carregar variáveis de ambiente
+load_dotenv(override=True)
 
-if DATABASE_URL:
-    # Limpa possíveis espaços ou quebras de linha
-    DATABASE_URL = DATABASE_URL.strip()
-    
-    # Garante que a URL use o driver pymysql para MySQL
-    if DATABASE_URL.startswith("mysql://"):
-        DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+# URL do banco de dados (Railway ou SQLite local como fallback)
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-if not DATABASE_URL:
-    DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'helpdesk.db')}"
+# Garantir compatibilidade com drivers do SQLAlchemy
+if SQLALCHEMY_DATABASE_URL:
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.strip()
+    if SQLALCHEMY_DATABASE_URL.startswith("mysql://"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
-# Argumentos extras para o engine
-engine_args = {}
-if "sqlite" in DATABASE_URL:
-    engine_args["connect_args"] = {"check_same_thread": False}
-elif "mysql" in DATABASE_URL:
-    # Configurações otimizadas para MySQL no Railway
-    engine_args["pool_size"] = 5
-    engine_args["max_overflow"] = 10
-    engine_args["pool_timeout"] = 30
-    engine_args["pool_recycle"] = 3600
-    engine_args["pool_pre_ping"] = True
+if not SQLALCHEMY_DATABASE_URL:
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./swiftdesk.db"
 
-engine = create_engine(
-    DATABASE_URL,
-    **engine_args
-)
+# Configuração do Engine
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # Configurações para MySQL/Railway para evitar timeouts
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=3600,
+        pool_pre_ping=True
+    )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
