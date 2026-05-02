@@ -255,12 +255,17 @@ Atenciosamente,
         # Debug para verificar se as envs estão chegando
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
         
-        # Sequência EHLO-STARTTLS-EHLO completa com local_hostname genérico para evitar erros de encoding
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=25, local_hostname="localhost")
-        server.set_debuglevel(1)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
+        # Lógica inteligente para trocar entre SSL (465) e STARTTLS (587)
+        if smtp_port == 465:
+            # SSL Direto
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=25)
+        else:
+            # SMTP padrão com STARTTLS
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
+            server.set_debuglevel(1)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
         
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to_email, msg.as_string())
@@ -271,6 +276,22 @@ Atenciosamente,
     except Exception as e:
         print(f"ERRO REAL NO ENVIO DE E-MAIL: {repr(e)}")
         return False
+
+@app.get("/teste-email")
+def teste_envio_email(email: str = "mjoaooliveira7891@gmail.com"):
+    """Rota de diagnóstico rápido para testar o envio de e-mail"""
+    resultado = send_real_email(
+        email,
+        "TESTE_LOGIN",
+        "123456",
+        "Usuário de Teste",
+        "SwiftDesk Diagnóstico"
+    )
+    return {
+        "success": resultado,
+        "message": "E-mail enviado com sucesso!" if resultado else "Falha no envio. Verifique os logs do Render.",
+        "destinatario": email
+    }
 
 def send_recovery_email(to_email: str, code: str):
     smtp_server = os.getenv("SMTP_SERVER")
