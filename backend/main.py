@@ -306,7 +306,7 @@ Atenciosamente,
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_api_key}"},
                 json={
-                    "from": f"{smtp_from_name} <onboarding@resend.dev>",
+                    "from": "SwiftDesk <onboarding@resend.dev>",
                     "to": [to_email],
                     "subject": "Dados de Acesso - SwiftDesk",
                     "html": body.replace("\n", "<br>")
@@ -314,10 +314,13 @@ Atenciosamente,
                 timeout=10
             ))
             if resp.status_code in [200, 201, 202]:
-                print("DEBUG API: Enviado via Resend com sucesso!")
+                print(f"DEBUG API: Enviado via Resend com sucesso para {to_email}!")
                 return True
+            else:
+                print(f"ERRO API RESEND: {resp.status_code} - {resp.text}")
+                # Se a API falhar, não retorna False aqui para tentar o SMTP como fallback
         except Exception as e:
-            print(f"FALHA RESEND: {repr(e)}")
+            print(f"FALHA CRÍTICA RESEND: {repr(e)}")
 
     # 2. Fallback para SMTP (Porta 465 ou 587)
     try:
