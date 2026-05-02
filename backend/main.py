@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema, init_db
+from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema, HistoricoChamado, init_db
 from datetime import datetime, timedelta
 import requests
 
@@ -888,7 +888,6 @@ def get_escalados_disponiveis(nivel: str, db: Session = Depends(get_db)):
 
 @app.patch("/chamados/{chamado_id}")
 def update_chamado(chamado_id: int, c_update: ChamadoUpdate, db: Session = Depends(get_db)):
-    from database import HistoricoChamado
     db_chamado = db.query(Chamado).filter(Chamado.id == chamado_id).first()
     if not db_chamado:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
