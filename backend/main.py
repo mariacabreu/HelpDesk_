@@ -218,16 +218,13 @@ def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT") or 587)
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    smtp_from_name = os.getenv("SMTP_FROM_NAME")
-
-    # Limpeza rigorosa das variáveis de ambiente
-    if smtp_server: smtp_server = smtp_server.strip()
-    if smtp_user: smtp_user = smtp_user.strip()
-    if smtp_password: smtp_password = smtp_password.strip()
+    # Forçar recarregamento das envs para garantir que pegue o que está no Render
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
+    smtp_port_raw = os.environ.get("SMTP_PORT", "587").strip()
+    smtp_port = int(smtp_port_raw)
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
+    smtp_from_name = os.environ.get("SMTP_FROM_NAME", "SwiftDesk Support").strip()
 
     msg = MIMEMultipart()
     msg["From"] = f"{smtp_from_name} <{smtp_user}>"
@@ -254,31 +251,18 @@ Atenciosamente,
 
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
-    # Definir o envelope sender como o usuário SMTP para evitar rejeição por SPF/DMARC
-    envelope_sender = smtp_user
-
     try:
-        print("--- DEBUG ENVIO DE E-MAIL ---")
-        print(f"SMTP_SERVER: {smtp_server}")
-        print(f"SMTP_PORT: {smtp_port}")
-        print(f"SMTP_USER: {smtp_user}")
-        print(f"DESTINATARIO: {to_email}")
+        print(f"DEBUG SMTP: Conectando a {smtp_server}:{smtp_port} como {smtp_user}")
         
-        # Timeout de 15 segundos para evitar que o worker do Render trave
-        if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port, local_hostname="localhost", timeout=15)
-        else:
-            server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost", timeout=15)
-            server.set_debuglevel(1)
-            server.ehlo()
-            if smtp_port == 587:
-                server.starttls()
-                server.ehlo()
-        
+        # Simplificação máxima para evitar problemas de handshake
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=20)
+        server.set_debuglevel(1)
+        server.starttls()
         server.login(smtp_user, smtp_password)
-        server.sendmail(envelope_sender, to_email, msg.as_string())
+        server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
-        print(f"E-mail enviado com sucesso para: {to_email}")
+        
+        print(f"DEBUG SMTP: E-mail enviado para {to_email}")
         return True
     except Exception as e:
         print(f"ERRO SMTP DETALHADO: {str(e)}")
