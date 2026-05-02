@@ -528,6 +528,18 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_empresa)
         
+        # Enviar e-mail de boas-vindas para o administrador da empresa
+        try:
+            send_real_email(
+                db_funcionario.email,
+                db_funcionario.login,
+                senha_segura,
+                db_funcionario.nome,
+                db_empresa.nome_fantasia or db_empresa.razao_social
+            )
+        except Exception as e:
+            print(f"Erro ao enviar e-mail na criação de empresa: {e}")
+
         # Retornar como dicionário para evitar problemas de serialização
         return {
             "id": db_empresa.id,
