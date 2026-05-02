@@ -280,12 +280,11 @@ Atenciosamente,
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
         
         if smtp_port == 465:
-            # SSL Direto (Porta 465) - Menos bloqueios no Render
+            # SSL Direto (Porta 465) - Seguindo padrão sugerido sem STARTTLS
             server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=25)
             server.set_debuglevel(1)
-            server.ehlo()
         else:
-            # TLS (Porta 587)
+            # TLS (Porta 587) - Sequência completa EHLO-STARTTLS-EHLO
             server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
             server.set_debuglevel(1)
             server.ehlo()
