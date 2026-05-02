@@ -215,21 +215,18 @@ def extract_password_from_cpf(cpf: str):
 def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
     import os
+    import requests
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
-    # Forçar recarregamento das envs para garantir que pegue o que está no Render
+    # Forçar recarregamento das envs
+    resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
     smtp_port_raw = os.environ.get("SMTP_PORT", "587").strip()
     smtp_port = int(smtp_port_raw)
     smtp_user = os.environ.get("SMTP_USER", "").strip()
     smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
     smtp_from_name = os.environ.get("SMTP_FROM_NAME", "SwiftDesk Support").strip()
-
-    msg = MIMEMultipart()
-    msg["From"] = f"{smtp_from_name} <{smtp_user}>"
-    msg["To"] = to_email
-    msg["Subject"] = "Boas-vindas e dados de acesso ao sistema"
 
     body = f"""
 Prezado(a) {nome_funcionario},
@@ -249,18 +246,46 @@ Atenciosamente,
 {nome_empresa}
 """
 
+    # 1. Tentar via Resend API (Opção Profissional - 100% garantido no Render)
+    if resend_api_key:
+        try:
+            print(f"DEBUG API: Tentando envio via Resend para {to_email}")
+            resp = requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_api_key}"},
+                json={
+                    "from": "SwiftDesk <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": "Boas-vindas e dados de acesso",
+                    "html": body.replace("\n", "<br>")
+                },
+                timeout=15
+            )
+            if resp.status_code in [200, 201, 202]:
+                print("DEBUG API: E-mail enviado com sucesso via Resend!")
+                return True
+            else:
+                print(f"ERRO API RESEND: {resp.status_code} - {resp.text}")
+        except Exception as e:
+            print(f"FALHA NA API RESEND: {repr(e)}")
+
+    # 2. Fallback para SMTP (O que já estávamos tentando)
+    msg = MIMEMultipart()
+    msg["From"] = f"{smtp_from_name} <{smtp_user}>"
+    msg["To"] = to_email
+    msg["Subject"] = "Boas-vindas e dados de acesso ao sistema"
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
     try:
-        # Debug para verificar se as envs estão chegando
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
         
-        # Lógica inteligente para trocar entre SSL (465) e STARTTLS (587)
         if smtp_port == 465:
-            # SSL Direto
+            # SSL Direto (Porta 465) - Menos bloqueios no Render
             server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=25)
+            server.set_debuglevel(1)
+            server.ehlo()
         else:
-            # SMTP padrão com STARTTLS
+            # TLS (Porta 587)
             server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
             server.set_debuglevel(1)
             server.ehlo()
