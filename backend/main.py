@@ -1227,7 +1227,10 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
             nome_empresa = nome_empresa.split("@")[0]
         
         # Chamada direta sem BackgroundTasks para teste
+        # IMPORTANTE: Aumentar timeout e garantir log de erro
+        email_ok = False
         try:
+            print(f"DEBUG SMTP: Iniciando disparo de e-mail para {db_funcionario.email}")
             email_ok = send_real_email(
                 db_funcionario.email, 
                 db_funcionario.login, 
@@ -1235,8 +1238,10 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
                 db_funcionario.nome, 
                 nome_empresa
             )
+            if not email_ok:
+                print(f"DEBUG SMTP: A função send_real_email retornou False para {db_funcionario.email}")
         except Exception as e:
-            print(f"Erro ao enviar email: {e}")
+            print(f"ERRO CRÍTICO NO DISPARO DE E-MAIL: {repr(e)}")
             email_ok = False
         
         # Retornar o funcionário com o login gerado explicitamente
