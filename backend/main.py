@@ -252,12 +252,12 @@ Atenciosamente,
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
     try:
-        # Debug para verificar se as envs estão chegando (não logar a senha inteira por segurança)
-        print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}, PassConfigurada={'Sim' if smtp_password else 'Não'}")
+        # Debug para verificar se as envs estão chegando
+        print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
         
-        # Sequência EHLO-STARTTLS-EHLO completa (padrão mais estável para Gmail)
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
-        server.set_debuglevel(1) # Isso vai mostrar todo o diálogo SMTP nos logs do Render
+        # Sequência EHLO-STARTTLS-EHLO completa com local_hostname genérico para evitar erros de encoding
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=25, local_hostname="localhost")
+        server.set_debuglevel(1)
         server.ehlo()
         server.starttls()
         server.ehlo()
@@ -269,7 +269,6 @@ Atenciosamente,
         print(f"DEBUG SMTP: E-mail enviado com sucesso para {to_email}")
         return True
     except Exception as e:
-        # repr(e) mostra o tipo do erro e a mensagem completa (ex: 535 Authentication Failed)
         print(f"ERRO REAL NO ENVIO DE E-MAIL: {repr(e)}")
         return False
 
