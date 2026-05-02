@@ -229,6 +229,7 @@ def debug_email_direct(email: str = "mjoaooliveira7891@gmail.com"):
     print(f"DEBUG DIRETO: Tentando enviar para {email} via {s}:{port} com user {u}")
 
     try:
+        # Tentar conexão com timeout para diagnóstico rápido
         if port == 465:
             server = smtplib.SMTP_SSL(s, port, timeout=15)
         else:
@@ -240,7 +241,7 @@ def debug_email_direct(email: str = "mjoaooliveira7891@gmail.com"):
         
         msg = MIMEMultipart()
         msg["Subject"] = "SwiftDesk - TESTE DE CONEXAO DIRETA"
-        msg["From"] = u # Gmail EXIGE que seja igual ao user
+        msg["From"] = f"SwiftDesk Support <{u}>"
         msg["To"] = email
         msg.attach(MIMEText("Se voce recebeu isso, a conexao SMTP esta funcionando 100%.", "plain"))
         
@@ -249,7 +250,12 @@ def debug_email_direct(email: str = "mjoaooliveira7891@gmail.com"):
         return {"status": "sucesso", "msg": f"E-mail enviado para {email}"}
     except Exception as e:
         print(f"ERRO NO DEBUG EMAIL: {repr(e)}")
-        return {"status": "erro", "detalhe": str(e)}
+        return {"status": "erro", "detalhe": str(e), "tipo": type(e).__name__}
+
+@app.get("/api/debug-email")
+def debug_email_direct_api(email: str = "mjoaooliveira7891@gmail.com"):
+    """Alias para garantir que a rota funcione com ou sem prefixo /api"""
+    return debug_email_direct(email)
 
 async def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
