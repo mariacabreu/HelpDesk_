@@ -2,12 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, U
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import SessionLocal, Funcionario, Empresa, Chamado, StatusChamado, Prioridade, Equipamento, Notificacao, LogSistema, PasswordRecovery, AnexoChamado, BackupEquipamento, BackupSistema, HistoricoChamado, init_db
 from datetime import datetime, timedelta
 import requests
+import asyncio
 
 # Inicializar banco de dados (criar tabelas se não existirem)
 init_db()
@@ -212,12 +213,13 @@ def extract_password_from_cpf(cpf: str):
     # Pega os 6 primeiros
     return clean_cpf[:6]
 
-def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
+async def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
     import os
     import requests
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    import asyncio
 
     # Priorizar variáveis do Render/Env, mas ter fallbacks seguros
     resend_api_key = (os.environ.get("RESEND_API_KEY") or "").strip()
@@ -228,9 +230,8 @@ def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str
     smtp_password = (os.environ.get("SMTP_PASSWORD") or "").strip()
     smtp_from_name = (os.environ.get("SMTP_FROM_NAME") or "SwiftDesk Support").strip()
 
-    # Se não houver configuração de e-mail, apenas logar e retornar (evita travar o sistema local)
     if not resend_api_key and not smtp_user:
-        print("AVISO: Nenhuma configuração de e-mail (Resend ou SMTP) encontrada. E-mail não será enviado.")
+        print("AVISO: Nenhuma configuração de e-mail (Resend ou SMTP) encontrada.")
         return False
 
     body = f"""
@@ -255,7 +256,9 @@ Atenciosamente,
     if resend_api_key:
         try:
             print(f"DEBUG API: Tentando Resend para {to_email}")
-            resp = requests.post(
+            # Usar loop para não travar o async do FastAPI
+            loop = asyncio.get_event_loop()
+            resp = await loop.run_in_executor(None, lambda: requests.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_api_key}"},
                 json={
@@ -265,9 +268,9 @@ Atenciosamente,
                     "html": body.replace("\n", "<br>")
                 },
                 timeout=10
-            )
+            ))
             if resp.status_code in [200, 201, 202]:
-                print("DEBUG API: E-mail enviado com sucesso via Resend!")
+                print("DEBUG API: Enviado via Resend com sucesso!")
                 return True
         except Exception as e:
             print(f"FALHA RESEND: {repr(e)}")
@@ -275,30 +278,35 @@ Atenciosamente,
     # 2. Fallback para SMTP (Porta 465 ou 587)
     try:
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
-        if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
-            server.set_debuglevel(1)
-        else:
-            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
-            server.set_debuglevel(1)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
         
-        server.login(smtp_user, smtp_password)
+        def _send_smtp():
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+                server.set_debuglevel(1)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                server.set_debuglevel(1)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+            
+            server.login(smtp_user, smtp_password)
+            
+            msg = MIMEMultipart()
+            msg["From"] = f"{smtp_from_name} <{smtp_user}>"
+            msg["To"] = to_email
+            msg["Subject"] = "Dados de Acesso - SwiftDesk"
+            msg.attach(MIMEText(body, "plain", "utf-8" ))
+            
+            server.sendmail(smtp_user, to_email, msg.as_string())
+            server.quit()
+            return True
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _send_smtp)
         
-        msg = MIMEMultipart()
-        msg["From"] = f"{smtp_from_name} <{smtp_user}>"
-        msg["To"] = to_email
-        msg["Subject"] = "Dados de Acesso - SwiftDesk"
-        msg.attach(MIMEText(body, "plain", "utf-8" ))
-        
-        server.sendmail(smtp_user, to_email, msg.as_string())
-        server.quit()
-        print(f"DEBUG SMTP: E-mail enviado com sucesso para {to_email}")
-        return True
     except Exception as e:
-        print(f"ERRO REAL NO ENVIO DE E-MAIL: {repr(e)}")
+        print(f"ERRO SMTP: {repr(e)}")
         return False
 
 def send_recovery_email(to_email: str, code: str):
@@ -569,7 +577,8 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
         
         # Enviar e-mail de boas-vindas para o administrador da empresa
         try:
-            send_real_email(
+            background_tasks.add_task(
+                send_real_email,
                 db_funcionario.email,
                 db_funcionario.login,
                 senha_segura,
@@ -577,7 +586,7 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
                 db_empresa.nome_fantasia or db_empresa.razao_social
             )
         except Exception as e:
-            print(f"Erro ao enviar e-mail na criação de empresa: {e}")
+            print(f"Erro ao agendar e-mail na criação de empresa: {e}")
 
         # Retornar como dicionário para evitar problemas de serialização
         return {
@@ -1220,22 +1229,20 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
         if "@" in nome_empresa:
             nome_empresa = nome_empresa.split("@")[0]
         
-        # Chamada direta sem BackgroundTasks para teste
-        # IMPORTANTE: Aumentar timeout e garantir log de erro
-        email_ok = False
+        # Chamada assíncrona via BackgroundTasks para não travar a resposta
         try:
-            print(f"DEBUG SMTP: Iniciando disparo de e-mail para {db_funcionario.email}")
-            email_ok = send_real_email(
+            print(f"DEBUG SMTP: Agendando disparo de e-mail para {db_funcionario.email}")
+            background_tasks.add_task(
+                send_real_email,
                 db_funcionario.email, 
                 db_funcionario.login, 
                 senha_inicial, 
                 db_funcionario.nome, 
                 nome_empresa
             )
-            if not email_ok:
-                print(f"DEBUG SMTP: A função send_real_email retornou False para {db_funcionario.email}")
+            email_ok = True # Consideramos ok para o retorno imediato da API
         except Exception as e:
-            print(f"ERRO CRÍTICO NO DISPARO DE E-MAIL: {repr(e)}")
+            print(f"ERRO AO AGENDAR E-MAIL: {repr(e)}")
             email_ok = False
         
         # Retornar o funcionário com o login gerado explicitamente
