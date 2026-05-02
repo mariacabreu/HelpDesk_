@@ -1097,7 +1097,15 @@ def delete_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
         # 1. Desatribuir chamados vinculados a este funcionário (atribuido_a_id)
         db.query(Chamado).filter(Chamado.atribuido_a_id == funcionario_id).update({Chamado.atribuido_a_id: None})
         
-        # 2. Lidar com chamados onde ele é o solicitante (opcional, mas evita erros se houver restrição)
+        # 2. Deletar notificações vinculadas a este funcionário (evita erro de constraint 1451)
+        db.query(Notificacao).filter(Notificacao.usuario_id == funcionario_id).delete()
+        
+        # 3. Deletar histórico de chamados vinculado (ou desvincular se preferir manter o texto)
+        db.query(HistoricoChamado).filter(HistoricoChamado.usuario_id == funcionario_id).update({HistoricoChamado.usuario_id: None})
+        
+        # 4. Deletar recuperações de senha
+        db.query(PasswordRecovery).filter(PasswordRecovery.email == db_func.email).delete()
+
         # Log de exclusão
         registrar_log(db, "warning", "Funcionários", f"Funcionário {db_func.nome} excluído do sistema", empresa_id=db_func.empresa_id)
         
