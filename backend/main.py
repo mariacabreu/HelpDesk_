@@ -279,13 +279,12 @@ Atenciosamente,
     try:
         print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}")
         
+        # Timeout reduzido para falhar rápido se houver bloqueio de rede
         if smtp_port == 465:
-            # SSL Direto (Porta 465) - Seguindo padrão sugerido sem STARTTLS
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=25)
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
             server.set_debuglevel(1)
         else:
-            # TLS (Porta 587) - Sequência completa EHLO-STARTTLS-EHLO
-            server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
             server.set_debuglevel(1)
             server.ehlo()
             server.starttls()
@@ -301,28 +300,18 @@ Atenciosamente,
         print(f"ERRO REAL NO ENVIO DE E-MAIL: {repr(e)}")
         return False
 
-@app.get("/teste-email")
-def teste_envio_email(email: str = "mjoaooliveira7891@gmail.com"):
-    """Rota de diagnóstico rápido para testar o envio de e-mail"""
-    resultado = send_real_email(
-        email,
-        "TESTE_LOGIN",
-        "123456",
-        "Usuário de Teste",
-        "SwiftDesk Diagnóstico"
-    )
-    return {
-        "success": resultado,
-        "message": "E-mail enviado com sucesso!" if resultado else "Falha no envio. Verifique os logs do Render.",
-        "destinatario": email
-    }
-
 def send_recovery_email(to_email: str, code: str):
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    smtp_from_name = os.getenv("SMTP_FROM_NAME")
+    import smtplib
+    import os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
+    smtp_port_raw = os.environ.get("SMTP_PORT", "587").strip()
+    smtp_port = int(smtp_port_raw)
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
+    smtp_from_name = os.environ.get("SMTP_FROM_NAME", "SwiftDesk Support").strip()
 
     msg = MIMEMultipart()
     msg["From"] = f"{smtp_from_name} <{smtp_user}>"
@@ -345,11 +334,15 @@ Equipe de Suporte HelpDesk
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
     try:
-        server = smtplib.SMTP(smtp_server, smtp_port, local_hostname="localhost")
-        server.set_debuglevel(1)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
+        # Padrão estável para recuperação de senha também
+        if smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
