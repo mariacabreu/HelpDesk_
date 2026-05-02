@@ -260,6 +260,7 @@ def debug_email_direct_api(email: str = "mjoaooliveira7891@gmail.com"):
 def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str, nome_empresa: str):
     import smtplib
     import os
+    import traceback
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
@@ -268,6 +269,11 @@ def send_real_email(to_email: str, login: str, senha: str, nome_funcionario: str
     smtp_user = os.getenv("SMTP_USER")
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_from_name = os.getenv("SMTP_FROM_NAME", "SwiftDesk Support")
+
+    # Diagnóstico de variáveis (sem logar a senha inteira por segurança)
+    print(f"DEBUG SMTP_USER: {smtp_user}")
+    print(f"DEBUG SMTP_SERVER: {smtp_server}:{smtp_port}")
+    print(f"DEBUG SMTP_PASS_DEFINIDA: {'Sim' if smtp_password else 'Não'}")
 
     msg = MIMEMultipart()
     msg["From"] = f"{smtp_from_name} <{smtp_user}>"
@@ -295,7 +301,6 @@ Atenciosamente,
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
     try:
-        # Versão original e direta
         server = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
         server.ehlo()
         server.starttls()
@@ -303,10 +308,12 @@ Atenciosamente,
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
+        print(f"✅ E-mail enviado com sucesso para: {to_email}")
         return True
     except Exception as e:
-        print(f"Erro ao enviar e-mail: {e}")
-        return False
+        print("❌ ERRO REAL NO ENVIO DE E-MAIL:")
+        traceback.print_exc()
+        raise Exception(f"Erro SMTP: {str(e)}")
 
 def send_recovery_email(to_email: str, code: str):
     import smtplib
@@ -1222,6 +1229,7 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
             nome_empresa = nome_empresa.split("@")[0]
         
         # Chamada direta para garantir o envio
+        email_ok = False
         try:
             print(f"DEBUG SMTP: Iniciando disparo de e-mail para {db_funcionario.email}")
             email_ok = send_real_email(
@@ -1232,7 +1240,7 @@ def create_funcionario(funcionario: FuncionarioCreate, background_tasks: Backgro
                 nome_empresa
             )
         except Exception as e:
-            print(f"ERRO NO DISPARO DE E-MAIL: {repr(e)}")
+            print(f"ERRO TRATADO NO DISPARO DE E-MAIL: {e}")
             email_ok = False
         
         # Retornar o funcionário com o login gerado explicitamente
