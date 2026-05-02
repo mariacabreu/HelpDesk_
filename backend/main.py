@@ -252,20 +252,25 @@ Atenciosamente,
     msg.attach(MIMEText(body, "plain", "utf-8" ))
 
     try:
-        print(f"DEBUG SMTP: Conectando a {smtp_server}:{smtp_port} como {smtp_user}")
+        # Debug para verificar se as envs estão chegando (não logar a senha inteira por segurança)
+        print(f"DEBUG SMTP: Servidor={smtp_server}, Porta={smtp_port}, User={smtp_user}, PassConfigurada={'Sim' if smtp_password else 'Não'}")
         
-        # Simplificação máxima para evitar problemas de handshake
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=20)
-        server.set_debuglevel(1)
+        # Sequência EHLO-STARTTLS-EHLO completa (padrão mais estável para Gmail)
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=25)
+        server.set_debuglevel(1) # Isso vai mostrar todo o diálogo SMTP nos logs do Render
+        server.ehlo()
         server.starttls()
+        server.ehlo()
+        
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
         
-        print(f"DEBUG SMTP: E-mail enviado para {to_email}")
+        print(f"DEBUG SMTP: E-mail enviado com sucesso para {to_email}")
         return True
     except Exception as e:
-        print(f"ERRO SMTP DETALHADO: {str(e)}")
+        # repr(e) mostra o tipo do erro e a mensagem completa (ex: 535 Authentication Failed)
+        print(f"ERRO REAL NO ENVIO DE E-MAIL: {repr(e)}")
         return False
 
 def send_recovery_email(to_email: str, code: str):
